@@ -66,6 +66,12 @@ public class CfgSkill implements Serializable {
     private String skillLogic;
 
     /**
+     * 技能图标 URL
+     */
+    @Schema(description = "技能图标URL")
+    private String imgUrl;
+
+    /**
      * 技能描述
      */
     @Schema(description = "技能描述")

@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS `cfg_skill` (
   `interaction_type` tinyint NOT NULL DEFAULT 1 COMMENT '交互类型: 0-NONE, 1-PLAYER, 2-PLAYER_ROLE',
   `trigger_mode` tinyint DEFAULT 0 COMMENT '触发模式: 0-PLAYER_ACTIVE, 1-DM_REQUEST, 2-DM_INPUT',
   `skill_logic` json NOT NULL COMMENT '规则集JSON: phases, usage, target, constraints',
+  `img_url` varchar(255) COMMENT '技能图标URL',
   `description` varchar(255) COMMENT '技能描述',
   INDEX `idx_role` (`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能逻辑配置表';
