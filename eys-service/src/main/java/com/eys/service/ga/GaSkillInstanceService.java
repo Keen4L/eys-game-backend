@@ -16,4 +16,11 @@ public interface GaSkillInstanceService extends IService<GaSkillInstance> {
      * 获取玩家的所有技能实例
      */
     List<GaSkillInstance> listByGamePlayerId(Long gamePlayerId);
+
+    /**
+     * 扣减技能使用次数（支持技能组共享扣减）
+     *
+     * @param instanceId 技能实例ID
+     */
+    void deductUsage(Long instanceId);
 }

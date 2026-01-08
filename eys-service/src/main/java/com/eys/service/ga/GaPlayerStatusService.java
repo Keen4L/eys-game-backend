@@ -9,4 +9,30 @@ import com.eys.model.entity.ga.GaPlayerStatus;
  * @author EYS
  */
 public interface GaPlayerStatusService extends IService<GaPlayerStatus> {
+
+    /**
+     * 检查玩家是否有指定状态效果
+     *
+     * @param gamePlayerId 对局玩家ID
+     * @param effectType   效果类型（如 MUTED, PROTECTED 等）
+     * @return 是否有该效果
+     */
+    boolean hasEffect(Long gamePlayerId, String effectType);
+
+    /**
+     * 给玩家添加状态效果
+     *
+     * @param gamePlayerId 对局玩家ID
+     * @param effectType   效果类型
+     * @param duration     持续轮数（-1 表示永久）
+     */
+    void addEffect(Long gamePlayerId, String effectType, int duration);
+
+    /**
+     * 移除玩家的状态效果
+     *
+     * @param gamePlayerId 对局玩家ID
+     * @param effectType   效果类型
+     */
+    void removeEffect(Long gamePlayerId, String effectType);
 }

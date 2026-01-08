@@ -581,6 +581,11 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.PLAYER_DEAD);
         }
 
+        // 检查是否被禁言（状态效果）
+        if (playerStatusService.hasEffect(player.getId(), "MUTED")) {
+            throw new BizException(ResultCode.FORBIDDEN, "你已被禁言，无法投票");
+        }
+
         // 检查是否已投票
         if (voteLogService.hasVoted(dto.getGameId(), record.getCurrentRound(), player.getId())) {
             throw new BizException(ResultCode.VOTE_ALREADY_SUBMITTED);
