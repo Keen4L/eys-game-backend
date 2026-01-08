@@ -35,7 +35,6 @@ import com.eys.service.event.GameStageChangeEvent;
 import com.eys.service.event.PlayerStatusChangeEvent;
 import com.eys.service.event.SkillUsedEvent;
 import com.eys.engine.SkillValidator;
-import com.eys.engine.ActionEngine;
 
 /**
  * 游戏核心 Service 实现
@@ -60,7 +59,7 @@ public class GameServiceImpl implements GameService {
     private final SysUserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final SkillValidator skillValidator;
-    private final ActionEngine actionEngine;
+    private final com.eys.engine.skill.SkillHandlerFactory skillHandlerFactory;
 
     // ==================== 房间管理 ====================
 
@@ -109,8 +108,8 @@ public class GameServiceImpl implements GameService {
     @Transactional
     public RoomVO joinRoom(Long userId, JoinRoomDTO dto) {
         // 根据房间码查找游戏
-        GaGameRecord record = gameRecordService.getOne(new LambdaQueryWrapper<GaGameRecord>()
-                .eq(GaGameRecord::getRoomCode, dto.getRoomCode().toUpperCase()));
+        GaGameRecord record = gameRecordService.getOne(
+                new LambdaQueryWrapper<GaGameRecord>().eq(GaGameRecord::getRoomCode, dto.getRoomCode().toUpperCase()));
 
         if (record == null) {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
@@ -171,8 +170,8 @@ public class GameServiceImpl implements GameService {
 
     @Override
     public RoomVO getRoomByCode(String roomCode) {
-        GaGameRecord record = gameRecordService.getOne(new LambdaQueryWrapper<GaGameRecord>()
-                .eq(GaGameRecord::getRoomCode, roomCode.toUpperCase()));
+        GaGameRecord record = gameRecordService
+                .getOne(new LambdaQueryWrapper<GaGameRecord>().eq(GaGameRecord::getRoomCode, roomCode.toUpperCase()));
         if (record == null) {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
@@ -212,18 +211,15 @@ public class GameServiceImpl implements GameService {
         Map<Long, Long> fixedRoles = dto.getFixedRoles() != null ? dto.getFixedRoles() : new HashMap<>();
 
         // 获取所有可用角色
-        List<CfgRole> allRoles = roleService.list(new LambdaQueryWrapper<CfgRole>()
-                .eq(CfgRole::getIsEnabled, 1));
+        List<CfgRole> allRoles = roleService.list(new LambdaQueryWrapper<CfgRole>().eq(CfgRole::getIsEnabled, 1));
 
         if (allRoles.size() < players.size()) {
             throw new BizException("角色数量不足，无法开始游戏");
         }
 
         // 随机分配
-        List<Long> availableRoleIds = allRoles.stream()
-                .map(CfgRole::getId)
-                .filter(roleId -> !fixedRoles.containsValue(roleId))
-                .collect(Collectors.toList());
+        List<Long> availableRoleIds = allRoles.stream().map(CfgRole::getId)
+                .filter(roleId -> !fixedRoles.containsValue(roleId)).collect(Collectors.toList());
         Collections.shuffle(availableRoleIds);
 
         int randomIndex = 0;
@@ -308,8 +304,8 @@ public class GameServiceImpl implements GameService {
 
         // 发布阶段变更事件，触发 WebSocket 广播
         String oldStage = record.getCurrentStage();
-        eventPublisher.publishEvent(new GameStageChangeEvent(
-                this, dto.getGameId(), oldStage, dto.getTargetStage(), record.getCurrentRound()));
+        eventPublisher.publishEvent(new GameStageChangeEvent(this, dto.getGameId(), oldStage, dto.getTargetStage(),
+                record.getCurrentRound()));
     }
 
     @Override
@@ -381,16 +377,12 @@ public class GameServiceImpl implements GameService {
         List<SkillInstanceVO> skillVOs = mySkillInstances.stream().map(inst -> {
             CfgSkill skill = skillService.getById(inst.getSkillId());
             boolean canUse = canUseSkill(skill, record.getCurrentStage(), inst.getRemainCount());
-            return SkillInstanceVO.builder()
-                    .id(inst.getId())
-                    .skillId(inst.getSkillId())
+            return SkillInstanceVO.builder().id(inst.getId()).skillId(inst.getSkillId())
                     .skillName(skill != null ? skill.getName() : "")
                     .description(skill != null ? skill.getDescription() : "")
                     .triggerMode(skill != null ? skill.getTriggerMode() : 0)
-                    .interactionType(skill != null ? skill.getInteractionType() : 0)
-                    .remainCount(inst.getRemainCount())
-                    .canUseNow(canUse)
-                    .build();
+                    .interactionType(skill != null ? skill.getInteractionType() : 0).remainCount(inst.getRemainCount())
+                    .canUseNow(canUse).build();
         }).toList();
 
         // 获取场上玩家（使用 PlayerSafeVO，不暴露其他玩家身份）
@@ -398,29 +390,16 @@ public class GameServiceImpl implements GameService {
         List<PlayerSafeVO> playerVOs = allPlayers.stream().<PlayerSafeVO>map(p -> {
             SysUser user = userService.getById(p.getUserId());
             GaPlayerStatus status = playerStatusService.getById(p.getId());
-            return PlayerSafeVO.builder()
-                    .gamePlayerId(p.getId())
-                    .userId(p.getUserId())
-                    .nickname(user != null ? user.getNickname() : "")
-                    .avatarUrl(user != null ? user.getAvatarUrl() : "")
-                    .seatNo(p.getSeatNo())
-                    .alive(status != null && status.getIsAlive() == 1)
-                    .build();
+            return PlayerSafeVO.builder().gamePlayerId(p.getId()).userId(p.getUserId())
+                    .nickname(user != null ? user.getNickname() : "").avatarUrl(user != null ? user.getAvatarUrl() : "")
+                    .seatNo(p.getSeatNo()).alive(status != null && status.getIsAlive() == 1).build();
         }).collect(Collectors.toList());
 
-        return PlayerGameVO.builder()
-                .gameId(gameId)
-                .myGamePlayerId(myPlayer.getId())
-                .mySeatNo(myPlayer.getSeatNo())
-                .myRoleId(myPlayer.getCurrRoleId())
-                .myRoleName(myRole != null ? myRole.getName() : "")
+        return PlayerGameVO.builder().gameId(gameId).myGamePlayerId(myPlayer.getId()).mySeatNo(myPlayer.getSeatNo())
+                .myRoleId(myPlayer.getCurrRoleId()).myRoleName(myRole != null ? myRole.getName() : "")
                 .myCampType(myRole != null ? myRole.getCampType() : null)
-                .alive(myStatus != null && myStatus.getIsAlive() == 1)
-                .currentRound(record.getCurrentRound())
-                .currentStage(record.getCurrentStage())
-                .skills(skillVOs)
-                .players(playerVOs)
-                .build();
+                .alive(myStatus != null && myStatus.getIsAlive() == 1).currentRound(record.getCurrentRound())
+                .currentStage(record.getCurrentStage()).skills(skillVOs).players(playerVOs).build();
     }
 
     // ==================== 技能 ====================
@@ -452,34 +431,34 @@ public class GameServiceImpl implements GameService {
         // 获取释放者状态
         GaPlayerStatus actorStatus = playerStatusService.getById(player.getId());
 
-        // 使用 SkillValidator 校验（阶段、次数、目标）
-        skillValidator.validate(skill, instance, record, actorStatus,
-                dto.getTargetPlayerIds(), null);
-
-        // 使用 ActionEngine 执行技能效果判定
-        ActionEngine.SkillResult result = actionEngine.execute(
-                skill, player, dto.getTargetPlayerIds(), dto.getGuessRoleId());
-
-        // 扣减技能次数
-        instance.setRemainCount(instance.getRemainCount() - 1);
-        skillInstanceService.updateById(instance);
-
-        // 如果有技能组，同步扣减同组技能
-        if (instance.getGroupId() != null) {
-            List<GaSkillInstance> groupInstances = skillInstanceService.list(
-                    new LambdaQueryWrapper<GaSkillInstance>()
-                            .eq(GaSkillInstance::getGamePlayerId, player.getId())
-                            .eq(GaSkillInstance::getGroupId, instance.getGroupId())
-                            .ne(GaSkillInstance::getId, instance.getId()));
-            for (GaSkillInstance gi : groupInstances) {
-                if (gi.getRemainCount() > 0) {
-                    gi.setRemainCount(gi.getRemainCount() - 1);
-                    skillInstanceService.updateById(gi);
-                }
-            }
+        // 检查状态效果（被控制的玩家不能使用技能）
+        if (playerStatusService.hasEffect(player.getId(), GameEffectConstant.NIGHTMARED)
+                || playerStatusService.hasEffect(player.getId(), GameEffectConstant.SWALLOWED)
+                || playerStatusService.hasEffect(player.getId(), GameEffectConstant.DETAINED)) {
+            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "当前状态无法使用技能");
         }
 
-        // 记录动作流水（使用 ActionEngine 的判定结果）
+        // 使用 SkillValidator 校验（阶段、次数、目标）
+        skillValidator.validate(skill, instance, record, actorStatus, dto.getTargetPlayerIds(), null);
+
+        // 【策略模式】根据技能配置获取对应的 Handler
+        String skillLogicJson = skill.getSkillLogic();
+        com.eys.engine.skill.SkillHandler handler = skillHandlerFactory.getHandlerFromJson(skillLogicJson);
+        Map<String, Object> config = skillHandlerFactory.extractConfig(skillLogicJson);
+
+        // 构建技能执行上下文
+        com.eys.engine.skill.SkillContext context = com.eys.engine.skill.SkillContext.builder().skill(skill)
+                .config(config).actor(player).actorStatus(actorStatus).targetPlayerIds(dto.getTargetPlayerIds())
+                .guessRoleId(dto.getGuessRoleId()).gameRecord(record).currentRound(record.getCurrentRound())
+                .currentStage(record.getCurrentStage()).build();
+
+        // 执行技能
+        com.eys.engine.skill.SkillResult result = handler.execute(context);
+
+        // 扣减技能次数（使用技能组共享扣减）
+        skillInstanceService.deductUsage(instance.getId());
+
+        // 记录动作流水
         GaActionLog actionLog = new GaActionLog();
         actionLog.setGameId(dto.getGameId());
         actionLog.setRoundNo(record.getCurrentRound());
@@ -488,21 +467,19 @@ public class GameServiceImpl implements GameService {
         actionLog.setActionType("SKILL");
         actionLog.setActorId(player.getId());
         actionLog.setSkillId(skill.getId());
-        actionLog.setActionData(JSON.toJSONString(Map.of(
-                "target_ids", dto.getTargetPlayerIds() != null ? dto.getTargetPlayerIds() : List.of(),
-                "guess_role_id", dto.getGuessRoleId() != null ? dto.getGuessRoleId() : 0,
-                "success", result.success(),
-                "effect_type", result.effectType())));
-        actionLog.setResultNote(result.resultNote());
+        actionLog.setActionData(JSON.toJSONString(
+                Map.of("target_ids", dto.getTargetPlayerIds() != null ? dto.getTargetPlayerIds() : List.of(),
+                        "guess_role_id", dto.getGuessRoleId() != null ? dto.getGuessRoleId() : 0, "success",
+                        result.isSuccess(), "effect_type", result.getEffectType())));
+        actionLog.setResultNote(result.getDmNote());
         actionLogService.save(actionLog);
 
-        // 发布技能使用事件
-        eventPublisher.publishEvent(new SkillUsedEvent(
-                this, dto.getGameId(), player.getId(), skill.getId(),
-                skill.getName(), result.resultNote()));
+        // 发布技能使用事件（分级推送：DM 收详细信息，其他人收脱敏信息）
+        eventPublisher.publishEvent(new SkillUsedEvent(this, dto.getGameId(), record.getDmUserId(), player.getId(),
+                skill.getId(), skill.getName(), result.getDmNote(), result.getPublicNote()));
 
-        log.info("玩家使用技能: userId={}, gameId={}, skillId={}, result={}",
-                userId, dto.getGameId(), skill.getId(), result.success());
+        log.info("玩家使用技能: userId={}, gameId={}, skillId={}, handler={}, success={}", userId, dto.getGameId(),
+                skill.getId(), handler.getHandlerKey(), result.isSuccess());
     }
 
     @Override
@@ -539,9 +516,9 @@ public class GameServiceImpl implements GameService {
         actionLog.setActionType("SKILL");
         actionLog.setActorId(instance.getGamePlayerId());
         actionLog.setSkillId(skill.getId());
-        actionLog.setActionData(JSON.toJSONString(Map.of(
-                "target_ids", dto.getTargetPlayerIds() != null ? dto.getTargetPlayerIds() : List.of(),
-                "guess_role_id", dto.getGuessRoleId() != null ? dto.getGuessRoleId() : 0)));
+        actionLog.setActionData(JSON.toJSONString(
+                Map.of("target_ids", dto.getTargetPlayerIds() != null ? dto.getTargetPlayerIds() : List.of(),
+                        "guess_role_id", dto.getGuessRoleId() != null ? dto.getGuessRoleId() : 0)));
         actionLog.setResultNote("[DM录入] 技能: " + skill.getName());
         actionLogService.save(actionLog);
 
@@ -551,8 +528,8 @@ public class GameServiceImpl implements GameService {
     @Override
     public void dmRequestSkill(Long dmUserId, Long gameId, Long targetPlayerId, Long skillInstanceId) {
         // TODO: 通过 WebSocket 向目标玩家推送技能使用请求
-        log.info("DM请求玩家使用技能: dmUserId={}, gameId={}, targetPlayerId={}, skillInstanceId={}",
-                dmUserId, gameId, targetPlayerId, skillInstanceId);
+        log.info("DM请求玩家使用技能: dmUserId={}, gameId={}, targetPlayerId={}, skillInstanceId={}", dmUserId, gameId,
+                targetPlayerId, skillInstanceId);
     }
 
     // ==================== 投票 ====================
@@ -615,35 +592,36 @@ public class GameServiceImpl implements GameService {
 
         // 获取存活玩家列表（应投票人数）
         List<GaGamePlayer> allPlayers = gamePlayerService.listByGameId(gameId);
-        List<GaGamePlayer> aliveVoters = allPlayers.stream()
-                .filter(p -> {
-                    GaPlayerStatus status = playerStatusService.getById(p.getId());
-                    return status != null && status.getIsAlive() == 1;
-                })
-                .toList();
+        List<GaGamePlayer> aliveVoters = allPlayers.stream().filter(p -> {
+            GaPlayerStatus status = playerStatusService.getById(p.getId());
+            return status != null && status.getIsAlive() == 1;
+        }).toList();
 
         // 获取本轮投票记录
         List<GaVoteLog> votes = voteLogService.listByGameAndRound(gameId, targetRound);
 
-        // 统计得票
+        // 统计弃票数（targetId=0 或 NULL 且 isSkipped=0）
+        int abstainCount = (int) votes.stream()
+                .filter(v -> (v.getTargetId() == null || v.getTargetId() == 0) && v.getIsSkipped() != 1).count();
+
+        // 统计跳过数（isSkipped=1）
+        int skippedCount = (int) votes.stream().filter(v -> v.getIsSkipped() == 1).count();
+
+        // 统计得票（排除弃票和跳过）
         Map<Long, Long> voteCountMap = votes.stream()
-                .filter(v -> v.getTargetId() != null && v.getIsSkipped() != 1)
+                .filter(v -> v.getTargetId() != null && v.getTargetId() != 0 && v.getIsSkipped() != 1)
                 .collect(Collectors.groupingBy(GaVoteLog::getTargetId, Collectors.counting()));
 
         // 构建得票统计列表
-        List<VoteResultVO.VoteCountItem> voteCounts = voteCountMap.entrySet().stream()
-                .map(entry -> {
-                    Long targetId = entry.getKey();
-                    GaGamePlayer targetPlayer = gamePlayerService.getById(targetId);
-                    SysUser user = targetPlayer != null ? userService.getById(targetPlayer.getUserId()) : null;
-                    return VoteResultVO.VoteCountItem.builder()
-                            .targetPlayerId(targetId)
-                            .targetNickname(user != null ? user.getNickname() : "")
-                            .seatNo(targetPlayer != null ? targetPlayer.getSeatNo() : 0)
-                            .count(entry.getValue().intValue())
-                            .build();
-                })
-                .sorted((a, b) -> b.getCount() - a.getCount()) // 按得票数降序
+        List<VoteResultVO.VoteCountItem> voteCounts = voteCountMap.entrySet().stream().map(entry -> {
+            Long targetId = entry.getKey();
+            GaGamePlayer targetPlayer = gamePlayerService.getById(targetId);
+            SysUser user = targetPlayer != null ? userService.getById(targetPlayer.getUserId()) : null;
+            return VoteResultVO.VoteCountItem.builder().targetPlayerId(targetId)
+                    .targetNickname(user != null ? user.getNickname() : "")
+                    .seatNo(targetPlayer != null ? targetPlayer.getSeatNo() : 0).count(entry.getValue().intValue())
+                    .build();
+        }).sorted((a, b) -> b.getCount() - a.getCount()) // 按得票数降序
                 .collect(Collectors.toList());
 
         // 判定最高票
@@ -657,23 +635,14 @@ public class GameServiceImpl implements GameService {
 
             // 检查是否有平票
             final int finalTopVoteCount = topVoteCount;
-            long tieCount = voteCounts.stream()
-                    .filter(item -> item.getCount() == finalTopVoteCount)
-                    .count();
+            long tieCount = voteCounts.stream().filter(item -> item.getCount() == finalTopVoteCount).count();
             isTie = tieCount > 1;
         }
 
-        return VoteResultVO.builder()
-                .gameId(gameId)
-                .roundNo(targetRound)
-                .votedCount(votes.size())
-                .totalVoters(aliveVoters.size())
-                .completed(votes.size() >= aliveVoters.size())
-                .voteCounts(voteCounts)
-                .topVotedPlayerId(topVotedPlayerId)
-                .topVoteCount(topVoteCount)
-                .isTie(isTie)
-                .build();
+        return VoteResultVO.builder().gameId(gameId).roundNo(targetRound).votedCount(votes.size())
+                .totalVoters(aliveVoters.size()).completed(votes.size() >= aliveVoters.size()).voteCounts(voteCounts)
+                .topVotedPlayerId(topVotedPlayerId).topVoteCount(topVoteCount).isTie(isTie).abstainCount(abstainCount)
+                .skippedCount(skippedCount).build();
     }
 
     // ==================== DM 操作 ====================
@@ -717,8 +686,8 @@ public class GameServiceImpl implements GameService {
         // 查找玩家 userId 并发布状态变更事件
         GaGamePlayer player = gamePlayerService.getById(targetPlayerId);
         if (player != null) {
-            eventPublisher.publishEvent(new PlayerStatusChangeEvent(
-                    this, gameId, targetPlayerId, player.getUserId(), false, "KILL"));
+            eventPublisher.publishEvent(
+                    new PlayerStatusChangeEvent(this, gameId, targetPlayerId, player.getUserId(), false, "KILL"));
         }
     }
 
@@ -761,8 +730,8 @@ public class GameServiceImpl implements GameService {
         // 查找玩家 userId 并发布状态变更事件
         GaGamePlayer player = gamePlayerService.getById(targetPlayerId);
         if (player != null) {
-            eventPublisher.publishEvent(new PlayerStatusChangeEvent(
-                    this, gameId, targetPlayerId, player.getUserId(), true, "REVIVE"));
+            eventPublisher.publishEvent(
+                    new PlayerStatusChangeEvent(this, gameId, targetPlayerId, player.getUserId(), true, "REVIVE"));
         }
     }
 
@@ -796,45 +765,26 @@ public class GameServiceImpl implements GameService {
             if (isDm || isFinished) {
                 CfgRole role = p.getCurrRoleId() != null ? roleService.getById(p.getCurrRoleId()) : null;
                 CfgRole initRole = p.getInitRoleId() != null ? roleService.getById(p.getInitRoleId()) : null;
-                return PlayerFullVO.builder()
-                        .gamePlayerId(p.getId())
-                        .userId(p.getUserId())
+                return PlayerFullVO.builder().gamePlayerId(p.getId()).userId(p.getUserId())
                         .nickname(user != null ? user.getNickname() : "")
-                        .avatarUrl(user != null ? user.getAvatarUrl() : "")
-                        .seatNo(p.getSeatNo())
-                        .alive(isAlive)
-                        .roleId(role != null ? role.getId() : null)
-                        .roleName(role != null ? role.getName() : null)
+                        .avatarUrl(user != null ? user.getAvatarUrl() : "").seatNo(p.getSeatNo()).alive(isAlive)
+                        .roleId(role != null ? role.getId() : null).roleName(role != null ? role.getName() : null)
                         .campType(role != null ? role.getCampType() : null)
                         .initRoleId(initRole != null ? initRole.getId() : null)
-                        .initRoleName(initRole != null ? initRole.getName() : null)
-                        .build();
+                        .initRoleName(initRole != null ? initRole.getName() : null).build();
             }
 
             // 普通玩家只能看到脱敏信息
-            return PlayerSafeVO.builder()
-                    .gamePlayerId(p.getId())
-                    .userId(p.getUserId())
-                    .nickname(user != null ? user.getNickname() : "")
-                    .avatarUrl(user != null ? user.getAvatarUrl() : "")
-                    .seatNo(p.getSeatNo())
-                    .alive(isAlive)
-                    .build();
+            return PlayerSafeVO.builder().gamePlayerId(p.getId()).userId(p.getUserId())
+                    .nickname(user != null ? user.getNickname() : "").avatarUrl(user != null ? user.getAvatarUrl() : "")
+                    .seatNo(p.getSeatNo()).alive(isAlive).build();
         }).toList();
 
-        return RoomVO.builder()
-                .gameId(record.getId())
-                .roomCode(record.getRoomCode())
-                .dmUserId(record.getDmUserId())
-                .dmNickname(dm != null ? dm.getNickname() : "")
-                .mapId(record.getMapId())
-                .mapName(map != null ? map.getName() : "")
-                .status(record.getStatus())
-                .currentRound(record.getCurrentRound())
-                .currentStage(record.getCurrentStage())
-                .players(playerVOs)
-                .roleIds(roleIds)
-                .build();
+        return RoomVO.builder().gameId(record.getId()).roomCode(record.getRoomCode()).dmUserId(record.getDmUserId())
+                .dmNickname(dm != null ? dm.getNickname() : "").mapId(record.getMapId())
+                .mapName(map != null ? map.getName() : "").status(record.getStatus())
+                .currentRound(record.getCurrentRound()).currentStage(record.getCurrentStage()).players(playerVOs)
+                .roleIds(roleIds).build();
     }
 
     /**

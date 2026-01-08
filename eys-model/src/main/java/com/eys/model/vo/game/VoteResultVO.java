@@ -71,6 +71,18 @@ public class VoteResultVO {
     private Boolean isTie;
 
     /**
+     * 弃票数（主动弃权：targetId=0 且 isSkipped=0）
+     */
+    @Schema(description = "弃票数")
+    private Integer abstainCount;
+
+    /**
+     * 跳过数（被禁言/超时未投：isSkipped=1）
+     */
+    @Schema(description = "跳过/未投票数")
+    private Integer skippedCount;
+
+    /**
      * 单个玩家得票统计
      */
     @Data

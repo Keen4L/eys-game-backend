@@ -6,6 +6,7 @@ import org.springframework.context.ApplicationEvent;
 /**
  * 技能使用事件
  * 当玩家使用技能时触发，用于 WebSocket 通知
+ * 支持消息分级：DM 收到完整信息，其他人收到脱敏信息
  *
  * @author EYS
  */
@@ -16,6 +17,11 @@ public class SkillUsedEvent extends ApplicationEvent {
      * 游戏ID
      */
     private final Long gameId;
+
+    /**
+     * DM 用户ID（用于精准推送）
+     */
+    private final Long dmUserId;
 
     /**
      * 使用者对局玩家ID
@@ -33,17 +39,24 @@ public class SkillUsedEvent extends ApplicationEvent {
     private final String skillName;
 
     /**
-     * 结果备注
+     * DM 专用详细结果（包含身份信息）
      */
-    private final String resultNote;
+    private final String dmNote;
 
-    public SkillUsedEvent(Object source, Long gameId, Long actorPlayerId, Long skillId, String skillName,
-            String resultNote) {
+    /**
+     * 全员公开通知（脱敏后）
+     */
+    private final String publicNote;
+
+    public SkillUsedEvent(Object source, Long gameId, Long dmUserId, Long actorPlayerId,
+            Long skillId, String skillName, String dmNote, String publicNote) {
         super(source);
         this.gameId = gameId;
+        this.dmUserId = dmUserId;
         this.actorPlayerId = actorPlayerId;
         this.skillId = skillId;
         this.skillName = skillName;
-        this.resultNote = resultNote;
+        this.dmNote = dmNote;
+        this.publicNote = publicNote;
     }
 }

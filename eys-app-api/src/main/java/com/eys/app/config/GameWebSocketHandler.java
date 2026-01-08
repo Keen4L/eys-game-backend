@@ -153,6 +153,38 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
+     * 向房间内所有玩家推送消息（排除指定用户）
+     *
+     * @param gameId        游戏ID
+     * @param excludeUserId 排除的用户ID
+     * @param type          消息类型
+     * @param data          消息内容
+     */
+    public void broadcastToGameExclude(Long gameId, Long excludeUserId, WsMessageType type, Object data) {
+        Map<Long, WebSocketSession> gameSessions = GAME_SESSIONS.get(gameId);
+        if (gameSessions == null || gameSessions.isEmpty()) {
+            log.warn("游戏房间无连接: gameId={}", gameId);
+            return;
+        }
+
+        WsMessage wsMessage = new WsMessage(type.getCode(), data);
+        String payload = JSON.toJSONString(wsMessage);
+
+        gameSessions.forEach((userId, session) -> {
+            // 排除指定用户
+            if (!userId.equals(excludeUserId) && session.isOpen()) {
+                try {
+                    session.sendMessage(new TextMessage(payload));
+                } catch (IOException e) {
+                    log.error("推送消息失败: userId={}, error={}", userId, e.getMessage());
+                }
+            }
+        });
+
+        log.debug("广播消息(排除{}): gameId={}, type={}", excludeUserId, gameId, type.getCode());
+    }
+
+    /**
      * 断线重连后同步当前游戏状态
      */
     private void sendReconnectSync(WebSocketSession session, Long gameId, Long userId) {
