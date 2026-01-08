@@ -1,0 +1,152 @@
+package com.eys.service.ga;
+
+import com.eys.model.dto.game.*;
+import com.eys.model.vo.game.PlayerGameVO;
+import com.eys.model.vo.game.RoomVO;
+
+/**
+ * 游戏核心 Service 接口
+ * 处理房间管理、游戏流程、技能释放、投票等核心逻辑
+ *
+ * @author EYS
+ */
+public interface GameService {
+
+    // ==================== 房间管理 ====================
+
+    /**
+     * DM创建房间
+     *
+     * @param dmUserId DM用户ID
+     * @param dto      创建房间请求
+     * @return 房间信息
+     */
+    RoomVO createRoom(Long dmUserId, CreateRoomDTO dto);
+
+    /**
+     * 玩家加入房间
+     *
+     * @param userId 用户ID
+     * @param dto    加入房间请求
+     * @return 房间信息
+     */
+    RoomVO joinRoom(Long userId, JoinRoomDTO dto);
+
+    /**
+     * 玩家退出房间
+     *
+     * @param userId 用户ID
+     * @param gameId 游戏ID
+     */
+    void leaveRoom(Long userId, Long gameId);
+
+    /**
+     * 获取房间信息
+     *
+     * @param gameId 游戏ID
+     * @param userId 请求用户ID（用于判断是否为DM）
+     * @return 房间信息
+     */
+    RoomVO getRoomInfo(Long gameId, Long userId);
+
+    /**
+     * 根据房间码获取房间信息
+     *
+     * @param roomCode 房间码
+     * @return 房间信息
+     */
+    RoomVO getRoomByCode(String roomCode);
+
+    // ==================== 游戏流程 ====================
+
+    /**
+     * DM开始游戏
+     *
+     * @param dmUserId DM用户ID
+     * @param dto      开始游戏请求
+     */
+    void startGame(Long dmUserId, StartGameDTO dto);
+
+    /**
+     * DM切换游戏阶段
+     *
+     * @param dmUserId DM用户ID
+     * @param dto      阶段切换请求
+     */
+    void changeStage(Long dmUserId, StageChangeDTO dto);
+
+    /**
+     * DM结束游戏
+     *
+     * @param dmUserId DM用户ID
+     * @param dto      游戏结束请求
+     */
+    void endGame(Long dmUserId, GameEndDTO dto);
+
+    /**
+     * 获取玩家游戏视角
+     *
+     * @param userId 用户ID
+     * @param gameId 游戏ID
+     * @return 玩家视角
+     */
+    PlayerGameVO getPlayerGameView(Long userId, Long gameId);
+
+    // ==================== 技能 ====================
+
+    /**
+     * 玩家使用技能
+     *
+     * @param userId 用户ID
+     * @param dto    技能使用请求
+     */
+    void useSkill(Long userId, SkillUseDTO dto);
+
+    /**
+     * DM录入技能（DM_INPUT类型）
+     *
+     * @param dmUserId DM用户ID
+     * @param dto      技能使用请求
+     */
+    void dmInputSkill(Long dmUserId, SkillUseDTO dto);
+
+    /**
+     * DM发起技能请求（DM_REQUEST类型）
+     *
+     * @param dmUserId        DM用户ID
+     * @param gameId          游戏ID
+     * @param targetPlayerId  目标玩家ID
+     * @param skillInstanceId 技能实例ID
+     */
+    void dmRequestSkill(Long dmUserId, Long gameId, Long targetPlayerId, Long skillInstanceId);
+
+    // ==================== 投票 ====================
+
+    /**
+     * 玩家投票
+     *
+     * @param userId 用户ID
+     * @param dto    投票请求
+     */
+    void vote(Long userId, VoteDTO dto);
+
+    // ==================== DM 操作 ====================
+
+    /**
+     * DM判定玩家死亡
+     *
+     * @param dmUserId       DM用户ID
+     * @param gameId         游戏ID
+     * @param targetPlayerId 目标对局玩家ID
+     */
+    void killPlayer(Long dmUserId, Long gameId, Long targetPlayerId);
+
+    /**
+     * DM复活玩家
+     *
+     * @param dmUserId       DM用户ID
+     * @param gameId         游戏ID
+     * @param targetPlayerId 目标对局玩家ID
+     */
+    void revivePlayer(Long dmUserId, Long gameId, Long targetPlayerId);
+}

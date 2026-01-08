@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/eys-admin-api/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-admin-api/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-app-api/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-app-api/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-mapper/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-mapper/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-model/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-model/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/eys-service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+  </component>
+</project>

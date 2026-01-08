@@ -1,0 +1,15 @@
+com\eys\mapper\cfg\CfgDeckMapper.class
+com\eys\mapper\ga\GaSkillInstanceMapper.class
+com\eys\mapper\cfg\CfgSkillMapper.class
+com\eys\mapper\cfg\CfgMapMapper.class
+com\eys\mapper\cfg\CfgMapSpawnPointMapper.class
+com\eys\mapper\ga\GaGameRecordMapper.class
+com\eys\mapper\cfg\CfgRoleMapper.class
+com\eys\mapper\ga\GaPlayerStatusMapper.class
+com\eys\mapper\ga\GaVoteLogMapper.class
+com\eys\mapper\sys\SysUserStatsMapper.class
+com\eys\mapper\ga\GaPlayerSpawnMapper.class
+com\eys\mapper\sys\SysUserMapper.class
+com\eys\mapper\ga\GaGamePlayerMapper.class
+com\eys\mapper\sys\SysUserStatsRoleMapper.class
+com\eys\mapper\ga\GaActionLogMapper.class
