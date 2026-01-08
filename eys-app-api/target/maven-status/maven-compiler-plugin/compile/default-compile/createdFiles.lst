@@ -1,0 +1,5 @@
+com\eys\app\config\MybatisPlusConfig.class
+com\eys\app\config\GameHandshakeInterceptor.class
+com\eys\app\EysAppApplication.class
+com\eys\app\config\WebMvcConfig.class
+com\eys\app\controller\FaviconController.class

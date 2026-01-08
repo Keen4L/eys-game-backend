@@ -58,6 +58,11 @@ public enum WsMessageType {
     ROLE_ASSIGNED("ROLE_ASSIGNED", "身份分发"),
 
     /**
+     * 技能使用通知
+     */
+    SKILL_USED("SKILL_USED", "技能使用"),
+
+    /**
      * 游戏开始
      */
     GAME_START("GAME_START", "游戏开始");

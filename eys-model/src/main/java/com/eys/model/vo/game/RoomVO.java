@@ -72,9 +72,11 @@ public class RoomVO {
 
     /**
      * 房间内玩家列表
+     * - 普通玩家/游戏进行中: 返回 PlayerSafeVO（无身份）
+     * - DM/游戏结束: 返回 PlayerFullVO（含身份）
      */
     @Schema(description = "房间内玩家列表")
-    private List<PlayerVO> players;
+    private List<? extends PlayerSafeVO> players;
 
     /**
      * 本局牌组角色ID列表

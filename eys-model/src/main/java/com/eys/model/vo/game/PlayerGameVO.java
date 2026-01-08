@@ -77,8 +77,8 @@ public class PlayerGameVO {
     private List<SkillInstanceVO> skills;
 
     /**
-     * 场上所有玩家（只有存活状态，没有角色信息）
+     * 场上所有玩家（脱敏后，不含角色信息）
      */
-    @Schema(description = "场上所有玩家")
-    private List<PlayerVO> players;
+    @Schema(description = "场上所有玩家（脱敏）")
+    private List<PlayerSafeVO> players;
 }

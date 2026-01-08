@@ -1,0 +1,5 @@
+com\eys\admin\config\SaTokenListenerConfig.class
+com\eys\admin\config\MybatisPlusConfig.class
+com\eys\admin\config\WebMvcConfig.class
+com\eys\admin\controller\FaviconController.class
+com\eys\admin\EysAdminApplication.class

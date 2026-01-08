@@ -30,6 +30,13 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
+import com.eys.service.event.GameStageChangeEvent;
+import com.eys.service.event.PlayerStatusChangeEvent;
+import com.eys.service.event.SkillUsedEvent;
+import com.eys.engine.SkillValidator;
+import com.eys.engine.ActionEngine;
+
 /**
  * 游戏核心 Service 实现
  *
@@ -51,6 +58,9 @@ public class GameServiceImpl implements GameService {
     private final CfgSkillService skillService;
     private final CfgDeckService deckService;
     private final SysUserService userService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final SkillValidator skillValidator;
+    private final ActionEngine actionEngine;
 
     // ==================== 房间管理 ====================
 
@@ -246,13 +256,13 @@ public class GameServiceImpl implements GameService {
                 instance.setGamePlayerId(player.getId());
                 instance.setSkillId(skill.getId());
 
-                // 解析技能逻辑获取初始次数
-                int initialCount = parseInitialCount(skill.getSkillLogic());
+                // 使用 SkillValidator 解析技能配置（替代手动 JSON 解析）
+                int initialCount = skillValidator.getInitialCount(skill);
                 instance.setRemainCount(initialCount);
                 instance.setIsActive(1);
 
-                // 解析技能组ID
-                Long groupId = parseGroupId(skill.getSkillLogic());
+                // 使用 SkillValidator 解析技能组ID
+                Long groupId = skillValidator.getGroupId(skill);
                 instance.setGroupId(groupId);
 
                 skillInstanceService.save(instance);
@@ -295,6 +305,11 @@ public class GameServiceImpl implements GameService {
 
         log.info("阶段切换: gameId={}, stage={}, round={}", dto.getGameId(), dto.getTargetStage(),
                 record.getCurrentRound());
+
+        // 发布阶段变更事件，触发 WebSocket 广播
+        String oldStage = record.getCurrentStage();
+        eventPublisher.publishEvent(new GameStageChangeEvent(
+                this, dto.getGameId(), oldStage, dto.getTargetStage(), record.getCurrentRound()));
     }
 
     @Override
@@ -378,12 +393,12 @@ public class GameServiceImpl implements GameService {
                     .build();
         }).toList();
 
-        // 获取场上玩家（不包含角色信息）
+        // 获取场上玩家（使用 PlayerSafeVO，不暴露其他玩家身份）
         List<GaGamePlayer> allPlayers = gamePlayerService.listByGameId(gameId);
-        List<PlayerVO> playerVOs = allPlayers.stream().map(p -> {
+        List<PlayerSafeVO> playerVOs = allPlayers.stream().<PlayerSafeVO>map(p -> {
             SysUser user = userService.getById(p.getUserId());
             GaPlayerStatus status = playerStatusService.getById(p.getId());
-            return PlayerVO.builder()
+            return PlayerSafeVO.builder()
                     .gamePlayerId(p.getId())
                     .userId(p.getUserId())
                     .nickname(user != null ? user.getNickname() : "")
@@ -391,7 +406,7 @@ public class GameServiceImpl implements GameService {
                     .seatNo(p.getSeatNo())
                     .alive(status != null && status.getIsAlive() == 1)
                     .build();
-        }).toList();
+        }).collect(Collectors.toList());
 
         return PlayerGameVO.builder()
                 .gameId(gameId)
@@ -429,43 +444,42 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.SKILL_NOT_AVAILABLE);
         }
 
-        // 验证技能次数
-        if (instance.getRemainCount() == 0) {
-            throw new BizException(ResultCode.SKILL_NO_REMAINING);
-        }
-
         CfgSkill skill = skillService.getById(instance.getSkillId());
         if (skill == null) {
             throw new BizException(ResultCode.SKILL_NOT_AVAILABLE);
         }
 
-        // 验证技能阶段
-        if (!canUseSkill(skill, record.getCurrentStage(), instance.getRemainCount())) {
-            throw new BizException(ResultCode.SKILL_STAGE_MISMATCH);
-        }
+        // 获取释放者状态
+        GaPlayerStatus actorStatus = playerStatusService.getById(player.getId());
+
+        // 使用 SkillValidator 校验（阶段、次数、目标）
+        skillValidator.validate(skill, instance, record, actorStatus,
+                dto.getTargetPlayerIds(), null);
+
+        // 使用 ActionEngine 执行技能效果判定
+        ActionEngine.SkillResult result = actionEngine.execute(
+                skill, player, dto.getTargetPlayerIds(), dto.getGuessRoleId());
 
         // 扣减技能次数
-        if (instance.getRemainCount() > 0) {
-            instance.setRemainCount(instance.getRemainCount() - 1);
-            skillInstanceService.updateById(instance);
+        instance.setRemainCount(instance.getRemainCount() - 1);
+        skillInstanceService.updateById(instance);
 
-            // 如果有技能组，同步扣减同组技能
-            if (instance.getGroupId() != null) {
-                List<GaSkillInstance> groupInstances = skillInstanceService.list(
-                        new LambdaQueryWrapper<GaSkillInstance>()
-                                .eq(GaSkillInstance::getGamePlayerId, player.getId())
-                                .eq(GaSkillInstance::getGroupId, instance.getGroupId())
-                                .ne(GaSkillInstance::getId, instance.getId()));
-                for (GaSkillInstance gi : groupInstances) {
-                    if (gi.getRemainCount() > 0) {
-                        gi.setRemainCount(gi.getRemainCount() - 1);
-                        skillInstanceService.updateById(gi);
-                    }
+        // 如果有技能组，同步扣减同组技能
+        if (instance.getGroupId() != null) {
+            List<GaSkillInstance> groupInstances = skillInstanceService.list(
+                    new LambdaQueryWrapper<GaSkillInstance>()
+                            .eq(GaSkillInstance::getGamePlayerId, player.getId())
+                            .eq(GaSkillInstance::getGroupId, instance.getGroupId())
+                            .ne(GaSkillInstance::getId, instance.getId()));
+            for (GaSkillInstance gi : groupInstances) {
+                if (gi.getRemainCount() > 0) {
+                    gi.setRemainCount(gi.getRemainCount() - 1);
+                    skillInstanceService.updateById(gi);
                 }
             }
         }
 
-        // 记录动作流水
+        // 记录动作流水（使用 ActionEngine 的判定结果）
         GaActionLog actionLog = new GaActionLog();
         actionLog.setGameId(dto.getGameId());
         actionLog.setRoundNo(record.getCurrentRound());
@@ -476,11 +490,19 @@ public class GameServiceImpl implements GameService {
         actionLog.setSkillId(skill.getId());
         actionLog.setActionData(JSON.toJSONString(Map.of(
                 "target_ids", dto.getTargetPlayerIds() != null ? dto.getTargetPlayerIds() : List.of(),
-                "guess_role_id", dto.getGuessRoleId() != null ? dto.getGuessRoleId() : 0)));
-        actionLog.setResultNote("技能释放: " + skill.getName());
+                "guess_role_id", dto.getGuessRoleId() != null ? dto.getGuessRoleId() : 0,
+                "success", result.success(),
+                "effect_type", result.effectType())));
+        actionLog.setResultNote(result.resultNote());
         actionLogService.save(actionLog);
 
-        log.info("玩家使用技能: userId={}, gameId={}, skillId={}", userId, dto.getGameId(), skill.getId());
+        // 发布技能使用事件
+        eventPublisher.publishEvent(new SkillUsedEvent(
+                this, dto.getGameId(), player.getId(), skill.getId(),
+                skill.getName(), result.resultNote()));
+
+        log.info("玩家使用技能: userId={}, gameId={}, skillId={}, result={}",
+                userId, dto.getGameId(), skill.getId(), result.success());
     }
 
     @Override
@@ -576,6 +598,79 @@ public class GameServiceImpl implements GameService {
         log.info("玩家投票: userId={}, gameId={}, targetId={}", userId, dto.getGameId(), dto.getTargetPlayerId());
     }
 
+    @Override
+    public VoteResultVO getVoteResult(Long gameId, Integer roundNo) {
+        GaGameRecord record = gameRecordService.getById(gameId);
+        if (record == null) {
+            throw new BizException(ResultCode.ROOM_NOT_FOUND);
+        }
+
+        // 如果未指定轮次，使用当前轮次
+        int targetRound = roundNo != null ? roundNo : record.getCurrentRound();
+
+        // 获取存活玩家列表（应投票人数）
+        List<GaGamePlayer> allPlayers = gamePlayerService.listByGameId(gameId);
+        List<GaGamePlayer> aliveVoters = allPlayers.stream()
+                .filter(p -> {
+                    GaPlayerStatus status = playerStatusService.getById(p.getId());
+                    return status != null && status.getIsAlive() == 1;
+                })
+                .toList();
+
+        // 获取本轮投票记录
+        List<GaVoteLog> votes = voteLogService.listByGameAndRound(gameId, targetRound);
+
+        // 统计得票
+        Map<Long, Long> voteCountMap = votes.stream()
+                .filter(v -> v.getTargetId() != null && v.getIsSkipped() != 1)
+                .collect(Collectors.groupingBy(GaVoteLog::getTargetId, Collectors.counting()));
+
+        // 构建得票统计列表
+        List<VoteResultVO.VoteCountItem> voteCounts = voteCountMap.entrySet().stream()
+                .map(entry -> {
+                    Long targetId = entry.getKey();
+                    GaGamePlayer targetPlayer = gamePlayerService.getById(targetId);
+                    SysUser user = targetPlayer != null ? userService.getById(targetPlayer.getUserId()) : null;
+                    return VoteResultVO.VoteCountItem.builder()
+                            .targetPlayerId(targetId)
+                            .targetNickname(user != null ? user.getNickname() : "")
+                            .seatNo(targetPlayer != null ? targetPlayer.getSeatNo() : 0)
+                            .count(entry.getValue().intValue())
+                            .build();
+                })
+                .sorted((a, b) -> b.getCount() - a.getCount()) // 按得票数降序
+                .collect(Collectors.toList());
+
+        // 判定最高票
+        Long topVotedPlayerId = null;
+        int topVoteCount = 0;
+        boolean isTie = false;
+
+        if (!voteCounts.isEmpty()) {
+            topVoteCount = voteCounts.get(0).getCount();
+            topVotedPlayerId = voteCounts.get(0).getTargetPlayerId();
+
+            // 检查是否有平票
+            final int finalTopVoteCount = topVoteCount;
+            long tieCount = voteCounts.stream()
+                    .filter(item -> item.getCount() == finalTopVoteCount)
+                    .count();
+            isTie = tieCount > 1;
+        }
+
+        return VoteResultVO.builder()
+                .gameId(gameId)
+                .roundNo(targetRound)
+                .votedCount(votes.size())
+                .totalVoters(aliveVoters.size())
+                .completed(votes.size() >= aliveVoters.size())
+                .voteCounts(voteCounts)
+                .topVotedPlayerId(topVotedPlayerId)
+                .topVoteCount(topVoteCount)
+                .isTie(isTie)
+                .build();
+    }
+
     // ==================== DM 操作 ====================
 
     @Override
@@ -613,6 +708,13 @@ public class GameServiceImpl implements GameService {
         actionLogService.save(actionLog);
 
         log.info("DM判定玩家死亡: gameId={}, targetPlayerId={}", gameId, targetPlayerId);
+
+        // 查找玩家 userId 并发布状态变更事件
+        GaGamePlayer player = gamePlayerService.getById(targetPlayerId);
+        if (player != null) {
+            eventPublisher.publishEvent(new PlayerStatusChangeEvent(
+                    this, gameId, targetPlayerId, player.getUserId(), false, "KILL"));
+        }
     }
 
     @Override
@@ -650,6 +752,13 @@ public class GameServiceImpl implements GameService {
         actionLogService.save(actionLog);
 
         log.info("DM复活玩家: gameId={}, targetPlayerId={}", gameId, targetPlayerId);
+
+        // 查找玩家 userId 并发布状态变更事件
+        GaGamePlayer player = gamePlayerService.getById(targetPlayerId);
+        if (player != null) {
+            eventPublisher.publishEvent(new PlayerStatusChangeEvent(
+                    this, gameId, targetPlayerId, player.getUserId(), true, "REVIVE"));
+        }
     }
 
     // ==================== 私有方法 ====================
@@ -672,21 +781,39 @@ public class GameServiceImpl implements GameService {
         boolean isDm = viewerUserId != null && viewerUserId.equals(record.getDmUserId());
         boolean isFinished = GameStatus.FINISHED.getCode().equals(record.getStatus());
 
-        List<PlayerVO> playerVOs = players.stream().map(p -> {
+        // 根据查看者权限决定返回 PlayerSafeVO 还是 PlayerFullVO
+        List<? extends PlayerSafeVO> playerVOs = players.stream().map(p -> {
             SysUser user = userService.getById(p.getUserId());
             GaPlayerStatus status = playerStatusService.getById(p.getId());
-            CfgRole role = (isDm || isFinished) && p.getCurrRoleId() != null ? roleService.getById(p.getCurrRoleId())
-                    : null;
+            boolean isAlive = status == null || status.getIsAlive() == 1;
 
-            return PlayerVO.builder()
+            // DM 或游戏结束时返回完整信息
+            if (isDm || isFinished) {
+                CfgRole role = p.getCurrRoleId() != null ? roleService.getById(p.getCurrRoleId()) : null;
+                CfgRole initRole = p.getInitRoleId() != null ? roleService.getById(p.getInitRoleId()) : null;
+                return PlayerFullVO.builder()
+                        .gamePlayerId(p.getId())
+                        .userId(p.getUserId())
+                        .nickname(user != null ? user.getNickname() : "")
+                        .avatarUrl(user != null ? user.getAvatarUrl() : "")
+                        .seatNo(p.getSeatNo())
+                        .alive(isAlive)
+                        .roleId(role != null ? role.getId() : null)
+                        .roleName(role != null ? role.getName() : null)
+                        .campType(role != null ? role.getCampType() : null)
+                        .initRoleId(initRole != null ? initRole.getId() : null)
+                        .initRoleName(initRole != null ? initRole.getName() : null)
+                        .build();
+            }
+
+            // 普通玩家只能看到脱敏信息
+            return PlayerSafeVO.builder()
                     .gamePlayerId(p.getId())
                     .userId(p.getUserId())
                     .nickname(user != null ? user.getNickname() : "")
                     .avatarUrl(user != null ? user.getAvatarUrl() : "")
                     .seatNo(p.getSeatNo())
-                    .alive(status == null || status.getIsAlive() == 1)
-                    .roleId(role != null ? role.getId() : null)
-                    .roleName(role != null ? role.getName() : null)
+                    .alive(isAlive)
                     .build();
         }).toList();
 
@@ -706,59 +833,11 @@ public class GameServiceImpl implements GameService {
     }
 
     /**
-     * 解析技能初始次数
-     */
-    private int parseInitialCount(String skillLogic) {
-        try {
-            var json = JSON.parseObject(skillLogic);
-            var usage = json.getJSONObject("usage");
-            if (usage != null) {
-                return usage.getIntValue("initial");
-            }
-        } catch (Exception e) {
-            log.warn("解析技能逻辑失败: {}", e.getMessage());
-        }
-        return 1;
-    }
-
-    /**
-     * 解析技能组ID
-     */
-    private Long parseGroupId(String skillLogic) {
-        try {
-            var json = JSON.parseObject(skillLogic);
-            var usage = json.getJSONObject("usage");
-            if (usage != null && usage.containsKey("group_id")) {
-                return usage.getLong("group_id");
-            }
-        } catch (Exception e) {
-            log.warn("解析技能组ID失败: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    /**
      * 判断技能是否可以在当前阶段使用
+     * 
+     * @deprecated 使用 skillValidator.canUseNow() 替代
      */
     private boolean canUseSkill(CfgSkill skill, String currentStage, int remainCount) {
-        if (skill == null || remainCount == 0) {
-            return false;
-        }
-
-        // 只有 PLAYER_ACTIVE 类型的技能需要检查阶段
-        if (!TriggerMode.PLAYER_ACTIVE.getCode().equals(skill.getTriggerMode())) {
-            return false;
-        }
-
-        try {
-            var json = JSON.parseObject(skill.getSkillLogic());
-            var phases = json.getJSONArray("phases");
-            if (phases != null) {
-                return phases.contains(currentStage);
-            }
-        } catch (Exception e) {
-            log.warn("解析技能阶段失败: {}", e.getMessage());
-        }
-        return false;
+        return skillValidator.canUseNow(skill, currentStage, remainCount);
     }
 }
