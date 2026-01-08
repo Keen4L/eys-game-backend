@@ -5,9 +5,6 @@ import com.eys.engine.skill.SkillContext;
 import com.eys.engine.skill.SkillHandler;
 import com.eys.engine.skill.SkillResult;
 import com.eys.model.entity.ga.GaGamePlayer;
-import com.eys.model.entity.ga.GaPlayerStatus;
-import com.eys.service.ga.GaPlayerStatusService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -34,10 +31,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class BombHandler implements SkillHandler {
-
-    private final GaPlayerStatusService playerStatusService;
 
     @Override
     public String getHandlerKey() {

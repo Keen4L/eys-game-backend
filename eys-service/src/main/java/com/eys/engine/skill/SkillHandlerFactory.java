@@ -97,7 +97,11 @@ public class SkillHandlerFactory {
         try {
             JSONObject json = JSON.parseObject(skillLogicJson);
             JSONObject config = json.getJSONObject("config");
-            return config != null ? config.toJavaObject(Map.class) : new HashMap<>();
+            if (config != null) {
+                return config.to(new com.alibaba.fastjson2.TypeReference<Map<String, Object>>() {
+                });
+            }
+            return new HashMap<>();
         } catch (Exception e) {
             log.warn("提取技能 config 失败: {}", e.getMessage());
             return new HashMap<>();

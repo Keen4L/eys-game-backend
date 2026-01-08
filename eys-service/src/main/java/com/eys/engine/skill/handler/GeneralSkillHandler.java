@@ -1,7 +1,6 @@
 package com.eys.engine.skill.handler;
 
 import com.alibaba.fastjson2.JSON;
-import com.eys.common.constant.GameEffectConstant;
 import com.eys.common.constant.InteractionType;
 import com.eys.engine.skill.SkillContext;
 import com.eys.engine.skill.SkillHandler;

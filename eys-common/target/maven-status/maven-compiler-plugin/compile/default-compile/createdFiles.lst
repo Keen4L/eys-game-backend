@@ -1,4 +1,5 @@
 com\eys\common\constant\TriggerMode.class
+com\eys\common\constant\WsMessageType.class
 com\eys\common\result\ResultCode.class
 com\eys\common\constant\InteractionType.class
 com\eys\common\constant\VictoryType.class
@@ -8,5 +9,6 @@ com\eys\common\constant\GameStatus.class
 com\eys\common\constant\GameStage.class
 com\eys\common\constant\RoleType.class
 com\eys\common\result\PageResult.class
+com\eys\common\constant\GameEffectConstant.class
 com\eys\common\exception\BizException.class
 com\eys\common\result\R.class
