@@ -431,13 +431,6 @@ public class GameServiceImpl implements GameService {
         // 获取释放者状态
         GaPlayerStatus actorStatus = playerStatusService.getById(player.getId());
 
-        // 检查状态效果（被控制的玩家不能使用技能）
-        if (playerStatusService.hasEffect(player.getId(), GameEffectConstant.NIGHTMARED)
-                || playerStatusService.hasEffect(player.getId(), GameEffectConstant.SWALLOWED)
-                || playerStatusService.hasEffect(player.getId(), GameEffectConstant.DETAINED)) {
-            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "当前状态无法使用技能");
-        }
-
         // 使用 SkillValidator 校验（阶段、次数、目标）
         skillValidator.validate(skill, instance, record, actorStatus, dto.getTargetPlayerIds(), null);
 

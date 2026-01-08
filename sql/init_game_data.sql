@@ -47,65 +47,75 @@ INSERT INTO `cfg_role` (`id`, `name`, `camp_type`, `description`) VALUES
 -- 6.2 技能定义 (cfg_skill)
 -- ------------------------------------------
 -- interaction_type: 0-NONE, 1-PLAYER, 2-PLAYER_ROLE
--- skill_logic: { "handler_key": "xxx", "config": { ... } }
+-- skill_logic 结构:
+-- {
+--   "handler_key": "GeneralSkillHandler",
+--   "config": {
+--       "actions": [
+--           { "type": "KILL", "penaltyOnGood": true },
+--           { "type": "ADD_STATUS", "effectKey": "SILENCED", "duration": 1 }
+--       ]
+--   },
+--   "usage": { "initial": 1 }  <-- 次数限制
+-- }
 
 INSERT INTO `cfg_skill` (`role_id`, `name`, `interaction_type`, `skill_logic`, `description`) VALUES
--- 1. 网红鹅 (被动，无主动技能)
+-- 1. 网红鹅 (被动)
 -- (1, '网红警报', 0, '{"handler_key": "Passive", "config": {}}', '被动'),
 
--- 2. 正义鹅 (StandardKillHandler)
-(2, '正义处决', 1, '{"handler_key": "StandardKillHandler", "config": {"penalty_on_good": true, "limit": 1}}', '单局限一次，杀错自己死'),
+-- 2. 正义鹅 (General - KILL)
+(2, '正义处决', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "KILL", "penaltyOnGood": true}]}, "usage": {"initial": 1}}', '单局限一次，杀错自己死'),
 
--- 3. 先知鹅 (InvestigationHandler)
-(3, '查验身份', 1, '{"handler_key": "InvestigationHandler", "config": {"return_type": "ROLE"}}', '查看目标角色'),
+-- 3. 先知鹅 (General - CHECK_ROLE)
+(3, '查验身份', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "CHECK_ROLE", "returnType": "ROLE"}]}}', '查看目标角色'),
 
--- 4. 警长鹅 (StandardKillHandler)
-(4, '处决', 1, '{"handler_key": "StandardKillHandler", "config": {"penalty_on_good": true}}', '无限制，杀错自己死'),
+-- 4. 警长鹅 (General - KILL)
+(4, '处决', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "KILL", "penaltyOnGood": true}]}}', '无限制，杀错自己死'),
 
--- 5. 保镖鹅 (StatusEffectHandler)
-(5, '贴身保护', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "PROTECTED", "duration": 1}}', '保护目标一晚'),
+-- 5. 保镖鹅 (General - ADD_STATUS)
+(5, '贴身保护', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "PROTECTED", "duration": 1}]}}', '保护目标一晚'),
 
--- 6. 加拿大鹅 (被动)
+-- 7. 医生鹅 (General - ADD_STATUS POISONED)
+(7, '注射毒药', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "POISONED", "duration": 1}]}}', '目标延迟死亡'),
 
--- 7. 医生鹅 (需要特殊 Handler 处理多技能或通过前端选毒/奶)
--- 暂时只配复活/解药，或者分两个技能入口？这里假设后端支持多技能，或者先给毒药
--- 这里用 StatusEffectHandler 模拟毒药
-(7, '注射毒药', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "POISONED", "duration": 1}}', '目标延迟死亡'),
+-- 9. 大白鹅 (General - CHECK_ROLE DUCK_CHECK)
+(9, '查验鸭子', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "CHECK_ROLE", "returnType": "DUCK_CHECK"}]}}', '判断是否为鸭阵营'),
 
--- 9. 大白鹅 (InvestigationHandler)
-(9, '查验鸭子', 1, '{"handler_key": "InvestigationHandler", "config": {"return_type": "DUCK_CHECK"}}', '判断是否为鸭阵营'),
+-- 10. 菲律宾鹅 (General - KILL)
+(10, '复仇刺杀', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "KILL", "penaltyOnGood": true}]}, "usage": {"initial": 1}}', '同正义鹅逻辑'),
 
--- 10. 菲律宾鹅 (StandardKillHandler)
-(10, '复仇刺杀', 1, '{"handler_key": "StandardKillHandler", "config": {"penalty_on_good": true, "limit": 1}}', '同正义鹅逻辑'),
+-- 11. 恋爱脑鹅 (General - ADD_STATUS)
+(11, '绑定恋人', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "LOVE_LINKED", "duration": -1}]}}', '连接目标'),
 
--- 11. 恋爱脑鹅 (StatusEffectHandler)
-(11, '绑定恋人', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "LOVE_LINKED"}}', '连接目标'),
+-- 12. 魔术鹅 (MagicHandler - 特殊)
+(12, '生命置换', 1, '{"handler_key": "MagicHandler", "config": {}, "usage": {"initial": 1}}', '置换两人生命'),
 
--- 15. 猎鹰 (StandardKillHandler)
-(15, '猎杀', 1, '{"handler_key": "StandardKillHandler", "config": {"penalty_on_good": false}}', '无限制击杀'),
+-- 15. 猎鹰 (General - KILL)
+(15, '猎杀', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "KILL", "penaltyOnGood": false}]}}', '无限制击杀'),
 
--- 18. 鹈鹕 (PelicanHandler)
+-- 18. 鹈鹕 (PelicanHandler - 特殊)
 (18, '吞噬', 1, '{"handler_key": "PelicanHandler", "config": {}}', '吞入腹中'),
 
--- 19. 鸭王 (StandardKillHandler)
-(19, '刺杀', 1, '{"handler_key": "StandardKillHandler", "config": {"penalty_on_good": false}}', '普通击杀'),
+-- 19. 鸭王 (General - KILL)
+(19, '刺杀', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "KILL", "penaltyOnGood": false}]}}', '普通击杀'),
 
--- 20. 美女鸭 (StatusEffectHandler)
-(20, '魅惑连接', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "BEAUTY_LINKED"}}', '连接目标'),
+-- 20. 美女鸭 (General - ADD_STATUS)
+(20, '魅惑连接', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "BEAUTY_LINKED", "duration": -1}]}}', '连接目标'),
 
--- 21. 忍者鸭 (StatusEffectHandler)
-(21, '隐忍标记', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "NINJA_LINKED"}}', '连接目标'),
+-- 21. 忍者鸭 (General - ADD_STATUS)
+(21, '隐忍标记', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "NINJA_LINKED", "duration": -1}]}}', '连接目标'),
 
--- 22. 禁言鸭 (StatusEffectHandler)
-(22, '禁言', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "SILENCED", "duration": 1, "can_stack": true}}', '禁言目标'),
+-- 22. 禁言鸭 (General - ADD_STATUS)
+(22, '禁言', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "SILENCED", "duration": 1}]}}', '禁言目标'),
 
--- 23. 刺客鸭 (AssassinHandler)
+-- 23. 刺客鸭 (AssassinHandler - 特殊)
 (23, '狙击', 2, '{"handler_key": "AssassinHandler", "config": {}}', '猜身份击杀'),
 
--- 25. 梦魇鸭 (StatusEffectHandler)
-(25, '梦魇缠绕', 1, '{"handler_key": "StatusEffectHandler", "config": {"effect_key": "NIGHTMARED", "duration": 1}}', '封禁目标技能'),
+-- 24. 炸弹鸭 (BombHandler - 特殊: Self-destruct)
+(24, '自爆', 0, '{"handler_key": "BombHandler", "config": {}}', '自爆'),
 
--- 26. 火种鸭 (StandardKillHandler)
-(26, '灭口', 1, '{"handler_key": "StandardKillHandler", "config": {"penalty_on_good": false}}', '普通击杀');
+-- 25. 梦魇鸭 (General - ADD_STATUS)
+(25, '梦魇缠绕', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "ADD_STATUS", "effectKey": "NIGHTMARED", "duration": 1}]}}', '封禁目标技能'),
 
--- 其他特殊角色技能（魔术、鹦鹉、炸弹、决斗）暂时留空或待实现
+-- 26. 火种鸭 (General - KILL)
+(26, '灭口', 1, '{"handler_key": "GeneralSkillHandler", "config": {"actions": [{"type": "KILL", "penaltyOnGood": false}]}}', '普通击杀');

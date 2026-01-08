@@ -10,6 +10,9 @@ import com.eys.model.entity.cfg.CfgSkill;
 import com.eys.model.entity.ga.GaGameRecord;
 import com.eys.model.entity.ga.GaPlayerStatus;
 import com.eys.model.entity.ga.GaSkillInstance;
+import com.eys.service.ga.GaPlayerStatusService;
+import com.eys.common.constant.GameEffectConstant;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +26,10 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SkillValidator {
+
+    private final GaPlayerStatusService playerStatusService;
 
     /**
      * 校验技能是否可以使用
@@ -42,6 +48,15 @@ public class SkillValidator {
         // 1. 校验释放者是否存活
         if (actorStatus != null && actorStatus.getIsAlive() != 1) {
             throw new BizException(ResultCode.PLAYER_DEAD);
+        }
+
+        // 1.5 校验状态效果（被控制无法使用技能）
+        if (actorStatus != null) {
+            if (playerStatusService.hasEffect(actorStatus.getGamePlayerId(), GameEffectConstant.NIGHTMARED) ||
+                    playerStatusService.hasEffect(actorStatus.getGamePlayerId(), GameEffectConstant.SWALLOWED) ||
+                    playerStatusService.hasEffect(actorStatus.getGamePlayerId(), GameEffectConstant.DETAINED)) {
+                throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "当前状态无法使用技能");
+            }
         }
 
         // 2. 校验技能次数
