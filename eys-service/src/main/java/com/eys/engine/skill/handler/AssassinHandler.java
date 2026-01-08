@@ -65,60 +65,48 @@ public class AssassinHandler implements SkillHandler {
             return SkillResult.fail("目标已死亡");
         }
 
-        // 检查目标是否是明牌状态（决斗鹅发动技能后明牌，不可被刺客刺）
+        // 检查目标是否是明牌状态（决斗鹅明牌后不可刺）
         if (playerStatusService.hasEffect(targetId, GameEffectConstant.REVEALED)) {
             return SkillResult.fail("目标已明牌，无法刺杀");
         }
 
         GaGamePlayer actor = context.getActor();
-
-        // 获取实际角色
-        Long actualRoleId = targetPlayer.getCurrRoleId();
         Long guessRoleId = context.getGuessRoleId();
+        Long actualRoleId = targetPlayer.getCurrRoleId();
 
         CfgRole actualRole = roleService.getById(actualRoleId);
         CfgRole guessRole = roleService.getById(guessRoleId);
 
         String actualRoleName = actualRole != null ? actualRole.getName() : "未知";
         String guessRoleName = guessRole != null ? guessRole.getName() : "未知";
-
-        // 判定是否猜中
         boolean isCorrect = guessRoleId.equals(actualRoleId);
 
-        if (isCorrect) {
-            // 猜对：目标死亡
-            targetStatus.setIsAlive(0);
-            targetStatus.setDeathRound(context.getCurrentRound());
-            targetStatus.setDeathStage(context.getCurrentStage());
-            playerStatusService.updateById(targetStatus);
+        // 仅记录猜测结果，不执行生死判定
+        String dmNote = String.format("刺客(玩家%d) 猜测 玩家%d 是【%s】，实际是【%s】 —— %s",
+                actor.getSeatNo(), targetPlayer.getSeatNo(), guessRoleName, actualRoleName,
+                isCorrect ? "✅ 猜对" : "❌ 猜错（刺客应死亡）");
+        String publicNote = String.format("玩家%d 使用了技能【刺杀】", actor.getSeatNo());
 
-            String dmNote = String.format("刺客(玩家%d) 刺杀成功！目标(玩家%d) 是【%s】",
-                    actor.getSeatNo(), targetPlayer.getSeatNo(), actualRoleName);
-            String publicNote = String.format("玩家%d 使用了技能【刺杀】", actor.getSeatNo());
+        log.info("AssassinHandler 记录: actor={}, target={}, guess={}, actual={}, correct={}",
+                actor.getId(), targetId, guessRoleName, actualRoleName, isCorrect);
 
-            log.info("AssassinHandler 刺杀成功: actor={}, target={}, role={}",
-                    actor.getId(), targetId, actualRoleName);
+        // 返回结果（包含猜测信息供 DM 裁决）
+        SkillResult result = SkillResult.builder()
+                .success(true)
+                .targetPlayerId(targetId)
+                .targetRoleId(actualRoleId)
+                .dmNote(dmNote)
+                .publicNote(publicNote)
+                .effectType("ASSASSINATE")
+                .actorDeath(false) // DM 根据日志自行决定谁死
+                .build();
 
-            return SkillResult.kill(targetId, dmNote, publicNote);
+        // 在 extraData 中附加猜测结果供前端展示
+        result.setExtraData(java.util.Map.of(
+                "guess_role_id", guessRoleId,
+                "actual_role_id", actualRoleId,
+                "is_correct", isCorrect));
 
-        } else {
-            // 猜错：刺客自己死亡
-            GaPlayerStatus actorStatus = playerStatusService.getById(actor.getId());
-            if (actorStatus != null) {
-                actorStatus.setIsAlive(0);
-                actorStatus.setDeathRound(context.getCurrentRound());
-                actorStatus.setDeathStage(context.getCurrentStage());
-                playerStatusService.updateById(actorStatus);
-            }
-
-            String dmNote = String.format("刺客(玩家%d) 刺杀失败！猜测【%s】，实际是【%s】，刺客自己死亡",
-                    actor.getSeatNo(), guessRoleName, actualRoleName);
-            String publicNote = String.format("玩家%d 使用了技能【刺杀】，失败", actor.getSeatNo());
-
-            log.info("AssassinHandler 刺杀失败: actor={}, target={}, guess={}, actual={}",
-                    actor.getId(), targetId, guessRoleName, actualRoleName);
-
-            return SkillResult.actorDeath(dmNote, publicNote);
-        }
+        return result;
     }
 }

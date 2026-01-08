@@ -52,21 +52,21 @@ public class BombHandler implements SkillHandler {
     @Override
     public SkillResult execute(SkillContext context) {
         GaGamePlayer actor = context.getActor();
-        GaPlayerStatus actorStatus = context.getActorStatus();
 
-        // 炸弹鸭自爆，自己死亡
-        actorStatus.setIsAlive(0);
-        actorStatus.setDeathRound(context.getCurrentRound());
-        actorStatus.setDeathStage(context.getCurrentStage());
-        playerStatusService.updateById(actorStatus);
-
-        String dmNote = String.format("炸弹鸭(玩家%d) 在夜间【自爆】了！", actor.getSeatNo());
+        // 仅记录自爆意图，不修改状态
+        String dmNote = String.format("炸弹鸭(玩家%d) 触发【自爆】！⚠️ DM需根据位置判定 AOE 伤害范围",
+                actor.getSeatNo());
         String publicNote = String.format("玩家%d 使用了技能【自爆】", actor.getSeatNo());
 
-        log.info("BombHandler 执行: actor={} 自爆", actor.getId());
+        log.info("BombHandler 记录: actor={} 自爆（DM需手动处理伤害)", actor.getId());
 
-        // TODO: 如果需要计算 AOE 伤害，需要获取玩家坐标 (PlayerPosService)
-
-        return SkillResult.actorDeath(dmNote, publicNote);
+        // 返回特殊效果类型供 DM 识别
+        return SkillResult.builder()
+                .success(true)
+                .dmNote(dmNote)
+                .publicNote(publicNote)
+                .effectType("BOMB_EXPLODE")
+                .actorDeath(false) // DM 决定谁死
+                .build();
     }
 }

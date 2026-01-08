@@ -125,6 +125,10 @@ public class GeneralSkillHandler implements SkillHandler {
     /**
      * 处理击杀逻辑
      */
+    /**
+     * 处理击杀逻辑（纯记录）
+     * 不修改任何玩家状态，仅生成日志供 DM 裁决
+     */
     private SkillResult handleKill(SkillContext context, ActionConfig config, Long targetId) {
         if (targetId == null)
             return SkillResult.fail("未选择目标");
@@ -137,35 +141,23 @@ public class GeneralSkillHandler implements SkillHandler {
             return SkillResult.fail("目标无效或已死亡");
         }
 
-        // 检查杀错惩罚 (penalty_on_good)
+        // 检查是否有杀错惩罚风险（仅记录，不执行）
+        String warningNote = "";
         if (Boolean.TRUE.equals(config.getPenaltyOnGood())) {
             Long targetRoleId = target.getCurrRoleId();
             CfgRole targetRole = roleService.getById(targetRoleId);
             // 鹅阵营(0) 为好人
             if (targetRole != null && targetRole.getCampType() == 0) {
-                // 杀错：自己死亡
-                GaPlayerStatus actorStatus = context.getActorStatus();
-                actorStatus.setIsAlive(0);
-                actorStatus.setDeathRound(context.getCurrentRound());
-                actorStatus.setDeathStage(context.getCurrentStage());
-                playerStatusService.updateById(actorStatus);
-
-                String dmNote = String.format("玩家%d(杀手) 误杀好人，遭到反噬死亡", actor.getSeatNo());
-                String publicNote = String.format("玩家%d 试图行凶却倒地身亡", actor.getSeatNo());
-                log.info("GeneralHandler.KILL 误杀反噬: actor={}", actor.getId());
-                return SkillResult.actorDeath(dmNote, publicNote);
+                warningNote = " ⚠️【警告：目标是好人阵营，存在反噬风险】";
             }
         }
 
-        // 执行击杀
-        targetStatus.setIsAlive(0);
-        targetStatus.setDeathRound(context.getCurrentRound());
-        targetStatus.setDeathStage(context.getCurrentStage());
-        playerStatusService.updateById(targetStatus);
+        // 生成日志描述（不修改状态）
+        String dmNote = String.format("玩家%d 对 玩家%d 释放击杀技能%s",
+                actor.getSeatNo(), target.getSeatNo(), warningNote);
+        String publicNote = String.format("玩家%d 使用了技能", actor.getSeatNo());
 
-        String dmNote = String.format("玩家%d 击杀了 玩家%d", actor.getSeatNo(), target.getSeatNo());
-        String publicNote = "玩家 " + target.getSeatNo() + " 被击倒了";
-
+        log.info("GeneralHandler.KILL 记录: actor={}, target={}", actor.getId(), targetId);
         return SkillResult.kill(targetId, dmNote, publicNote);
     }
 
