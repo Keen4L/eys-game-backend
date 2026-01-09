@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS `ga_game_record` (
   `room_code` varchar(10) UNIQUE NOT NULL COMMENT '房间邀请码',
   `dm_user_id` bigint NOT NULL COMMENT '带本DM ID',
   `map_id` bigint NOT NULL COMMENT '地图ID',
+  `role_ids` json DEFAULT NULL COMMENT '本局使用的角色ID列表 [1,2,3...]',
   `status` varchar(20) DEFAULT 'PREPARING' COMMENT '游戏状态: PREPARING, PLAYING, FINISHED',
   `current_round` int DEFAULT 1 COMMENT '当前轮次',
   `current_stage` varchar(20) DEFAULT 'START' COMMENT '当前阶段',

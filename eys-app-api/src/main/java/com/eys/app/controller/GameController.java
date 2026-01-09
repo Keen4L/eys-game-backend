@@ -2,10 +2,10 @@ package com.eys.app.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.eys.common.result.R;
-import com.eys.model.dto.game.GameEndDTO;
-import com.eys.model.dto.game.StageChangeDTO;
-import com.eys.model.dto.game.StartGameDTO;
+import com.eys.model.dto.game.SkillUseDTO;
+import com.eys.model.dto.game.VoteDTO;
 import com.eys.model.vo.game.PlayerGameVO;
+import com.eys.model.vo.game.VoteResultVO;
 import com.eys.service.ga.GameService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,50 +15,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 游戏流程控制器
+ * 游戏控制器（玩家端）
+ * 包含玩家视角、技能使用、投票等操作
+ * DM 操作请使用 DmGameController
  *
  * @author EYS
  */
-@Tag(name = "游戏流程", description = "游戏开始/阶段/结束接口")
+@Tag(name = "游戏操作", description = "玩家游戏接口")
 @RestController
-@RequestMapping("/game")
+@RequestMapping("/app/v1/game")
 @RequiredArgsConstructor
 public class GameController {
 
     private final GameService gameService;
 
-    /**
-     * DM开始游戏
-     */
-    @Operation(summary = "开始游戏", description = "DM开始游戏，分配角色")
-    @PostMapping("/start")
-    public R<Void> start(@Valid @RequestBody StartGameDTO dto) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        gameService.startGame(userId, dto);
-        return R.ok();
-    }
-
-    /**
-     * DM切换阶段
-     */
-    @Operation(summary = "切换阶段", description = "DM手动推进游戏阶段")
-    @PostMapping("/stage")
-    public R<Void> changeStage(@Valid @RequestBody StageChangeDTO dto) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        gameService.changeStage(userId, dto);
-        return R.ok();
-    }
-
-    /**
-     * DM结束游戏
-     */
-    @Operation(summary = "结束游戏", description = "DM结束游戏并判定胜负")
-    @PostMapping("/end")
-    public R<Void> end(@Valid @RequestBody GameEndDTO dto) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        gameService.endGame(userId, dto);
-        return R.ok();
-    }
+    // ==================== 玩家视角 ====================
 
     /**
      * 获取玩家游戏视角
@@ -71,29 +42,40 @@ public class GameController {
         return R.ok(view);
     }
 
+    // ==================== 技能操作 ====================
+
     /**
-     * DM判定玩家死亡
+     * 玩家使用技能
      */
-    @Operation(summary = "DM判定玩家死亡")
-    @PostMapping("/{gameId}/kill/{playerId}")
-    public R<Void> killPlayer(
-            @Parameter(description = "游戏ID") @PathVariable Long gameId,
-            @Parameter(description = "对局玩家ID") @PathVariable Long playerId) {
+    @Operation(summary = "使用技能", description = "玩家主动释放技能")
+    @PostMapping("/skill/use")
+    public R<Void> useSkill(@Valid @RequestBody SkillUseDTO dto) {
         Long userId = StpUtil.getLoginIdAsLong();
-        gameService.killPlayer(userId, gameId, playerId);
+        gameService.useSkill(userId, dto);
+        return R.ok();
+    }
+
+    // ==================== 投票操作 ====================
+
+    /**
+     * 玩家投票
+     */
+    @Operation(summary = "投票", description = "玩家在投票阶段进行投票")
+    @PostMapping("/vote")
+    public R<Void> vote(@Valid @RequestBody VoteDTO dto) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        gameService.vote(userId, dto);
         return R.ok();
     }
 
     /**
-     * DM复活玩家
+     * 获取投票结果
      */
-    @Operation(summary = "DM复活玩家")
-    @PostMapping("/{gameId}/revive/{playerId}")
-    public R<Void> revivePlayer(
+    @Operation(summary = "获取投票结果", description = "获取指定轮次的投票结果统计")
+    @GetMapping("/{gameId}/vote/result")
+    public R<VoteResultVO> getVoteResult(
             @Parameter(description = "游戏ID") @PathVariable Long gameId,
-            @Parameter(description = "对局玩家ID") @PathVariable Long playerId) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        gameService.revivePlayer(userId, gameId, playerId);
-        return R.ok();
+            @Parameter(description = "轮次，不传则取当前轮次") @RequestParam(required = false) Integer roundNo) {
+        return R.ok(gameService.getVoteResult(gameId, roundNo));
     }
 }

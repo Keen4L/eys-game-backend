@@ -47,6 +47,12 @@ public class GaGameRecord implements Serializable {
     private Long mapId;
 
     /**
+     * 本局使用的角色ID列表 (JSON 格式)
+     */
+    @Schema(description = "本局使用的角色ID列表")
+    private String roleIds;
+
+    /**
      * 游戏状态: PREPARING, PLAYING, FINISHED
      */
     @Schema(description = "游戏状态: PREPARING, PLAYING, FINISHED")

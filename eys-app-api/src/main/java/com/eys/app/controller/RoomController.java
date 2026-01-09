@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "房间管理", description = "房间创建/加入/退出接口")
 @RestController
-@RequestMapping("/room")
+@RequestMapping("/app/v1/room")
 @RequiredArgsConstructor
 public class RoomController {
 

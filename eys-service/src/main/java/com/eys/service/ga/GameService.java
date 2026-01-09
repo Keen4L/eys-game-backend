@@ -180,4 +180,23 @@ public interface GameService {
      * @param targetPlayerId  目标对局玩家ID (可选)
      */
     void proxyCastSkill(Long dmUserId, Long gameId, Long actorPlayerId, Long skillInstanceId, Long targetPlayerId);
+
+    /**
+     * DM获取全局视角（所有玩家身份）
+     *
+     * @param dmUserId DM用户ID
+     * @param gameId   游戏ID
+     * @return 所有玩家的完整信息
+     */
+    java.util.List<com.eys.model.vo.game.DmPlayerViewVO> getDmFullView(Long dmUserId, Long gameId);
+
+    /**
+     * DM获取动作日志
+     *
+     * @param dmUserId DM用户ID
+     * @param gameId   游戏ID
+     * @param roundNo  轮次（可选，为 null 时取所有轮次）
+     * @return 动作日志列表
+     */
+    java.util.List<com.eys.model.entity.ga.GaActionLog> getActionLogs(Long dmUserId, Long gameId, Integer roundNo);
 }

@@ -90,4 +90,24 @@ public class GameEventListener {
                 webSocketHandler.broadcastToGameExclude(event.getGameId(), event.getDmUserId(),
                                 WsMessageType.SKILL_USED, publicData);
         }
+
+        /**
+         * 监听 DM 请求玩家使用技能事件
+         */
+        @Async
+        @EventListener
+        public void handleDmRequestSkill(com.eys.service.event.DmRequestSkillEvent event) {
+                log.info("收到DM请求技能事件: gameId={}, targetUserId={}, skillName={}",
+                                event.getGameId(), event.getTargetUserId(), event.getSkillName());
+
+                Map<String, Object> data = Map.of(
+                                "skillInstanceId", event.getSkillInstanceId(),
+                                "skillName", event.getSkillName(),
+                                "gamePlayerId", event.getTargetPlayerId(),
+                                "message", "DM 请求您使用技能：" + event.getSkillName());
+
+                // 只发送给目标玩家
+                webSocketHandler.sendToUser(event.getGameId(), event.getTargetUserId(),
+                                WsMessageType.DM_REQUEST_SKILL, data);
+        }
 }

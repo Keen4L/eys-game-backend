@@ -4,6 +4,7 @@ C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\eng
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\engine\skill\SkillHandlerFactory.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\engine\skill\SkillResult.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\engine\SkillValidator.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\engine\TargetCalculator.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\CfgDeckService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\CfgMapService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\CfgMapSpawnPointService.java
@@ -14,12 +15,14 @@ C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\ser
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgMapSpawnPointServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgRoleServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgSkillServiceImpl.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\DmRequestSkillEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\GameStageChangeEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\PlayerStatusChangeEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\SkillUsedEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaActionLogService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaGamePlayerService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaGameRecordService.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GamePermissionService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GameService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaPlayerStatusService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaSkillInstanceService.java

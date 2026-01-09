@@ -6,10 +6,8 @@ com\eys\app\config\GameWebSocketHandler$WsMessage.class
 com\eys\app\controller\GameController.class
 com\eys\app\config\GameWebSocketHandler.class
 com\eys\app\config\WebMvcConfig.class
-com\eys\app\controller\VoteController.class
 com\eys\app\controller\DmGameController.class
 com\eys\app\controller\RoomController.class
 com\eys\app\listener\GameEventListener.class
 com\eys\app\controller\AuthController.class
 com\eys\app\controller\FaviconController.class
-com\eys\app\controller\SkillController.class

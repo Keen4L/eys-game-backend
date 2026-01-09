@@ -1,5 +1,6 @@
 package com.eys.admin.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.eys.common.result.PageResult;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/rank")
 @RequiredArgsConstructor
+@SaCheckRole("admin")
 public class RankController {
 
     private final SysUserService sysUserService;

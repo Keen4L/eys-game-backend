@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "小程序认证", description = "微信登录/登出接口")
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/app/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 

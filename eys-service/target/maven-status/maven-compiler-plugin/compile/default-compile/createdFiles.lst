@@ -3,6 +3,7 @@ com\eys\engine\SkillValidator.class
 com\eys\service\ga\GaSkillInstanceService.class
 com\eys\service\ga\impl\GaPlayerStatusServiceImpl.class
 com\eys\service\cfg\impl\CfgMapSpawnPointServiceImpl.class
+com\eys\service\event\DmRequestSkillEvent.class
 com\eys\service\ga\impl\GameServiceImpl.class
 com\eys\service\sys\SysUserStatsRoleService.class
 com\eys\engine\skill\SkillHandlerFactory.class
@@ -11,6 +12,7 @@ com\eys\service\ga\GaGamePlayerService.class
 com\eys\engine\skill\SkillResult$SkillResultBuilder.class
 com\eys\service\sys\impl\SysUserServiceImpl.class
 com\eys\service\cfg\CfgMapSpawnPointService.class
+com\eys\engine\TargetCalculator.class
 com\eys\service\event\GameStageChangeEvent.class
 com\eys\service\sys\impl\SysUserStatsServiceImpl.class
 com\eys\service\cfg\impl\CfgDeckServiceImpl.class
@@ -21,6 +23,7 @@ com\eys\service\ga\GaActionLogService.class
 com\eys\engine\skill\SkillContext$SkillContextBuilder.class
 com\eys\service\ga\GameService.class
 com\eys\engine\skill\SkillHandler.class
+com\eys\service\ga\GamePermissionService.class
 com\eys\service\ga\impl\GaGamePlayerServiceImpl.class
 com\eys\service\cfg\impl\CfgSkillServiceImpl.class
 com\eys\service\sys\impl\SysUserStatsRoleServiceImpl.class

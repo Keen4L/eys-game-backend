@@ -2,9 +2,7 @@ C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\a
 C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\config\SaTokenListenerConfig.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\config\WebMvcConfig.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\AuthController.java
-C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\CfgDeckController.java
-C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\CfgMapController.java
-C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\CfgRoleController.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\ConfigController.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\FaviconController.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\GaGameRecordController.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-admin-api\src\main\java\com\eys\admin\controller\RankController.java

@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 技能执行上下文
@@ -24,11 +23,6 @@ public class SkillContext {
      * 技能配置
      */
     private CfgSkill skill;
-
-    /**
-     * 技能 JSON 配置（解析后的 config 部分）
-     */
-    private Map<String, Object> config;
 
     /**
      * 发起者对局玩家

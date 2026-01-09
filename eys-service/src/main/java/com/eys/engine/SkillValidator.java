@@ -1,6 +1,5 @@
 package com.eys.engine;
 
-import com.eys.common.constant.GameEffectConstant;
 import com.eys.common.exception.BizException;
 import com.eys.common.result.ResultCode;
 import com.eys.model.entity.cfg.CfgSkill;
@@ -48,11 +47,11 @@ public class SkillValidator {
             throw new BizException(ResultCode.PLAYER_DEAD);
         }
 
-        // 2. 校验状态效果（Tag 拦截）
+        // 2. 校验状态效果（Tag 拦截）- 使用技能名作为 Tag 名
         if (actorStatus != null) {
-            if (playerStatusService.hasEffect(actorStatus.getGamePlayerId(), GameEffectConstant.NIGHTMARED) ||
-                    playerStatusService.hasEffect(actorStatus.getGamePlayerId(), GameEffectConstant.SWALLOWED) ||
-                    playerStatusService.hasEffect(actorStatus.getGamePlayerId(), GameEffectConstant.DETAINED)) {
+            if (playerStatusService.hasEffect(actorStatus.getGamePlayerId(), "梦魇缠绕") ||
+                    playerStatusService.hasEffect(actorStatus.getGamePlayerId(), "吞噬") ||
+                    playerStatusService.hasEffect(actorStatus.getGamePlayerId(), "禁闭")) {
                 throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "当前状态无法使用技能");
             }
         }

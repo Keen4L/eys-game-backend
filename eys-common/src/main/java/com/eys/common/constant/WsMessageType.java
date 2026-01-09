@@ -65,7 +65,12 @@ public enum WsMessageType {
     /**
      * 游戏开始
      */
-    GAME_START("GAME_START", "游戏开始");
+    GAME_START("GAME_START", "游戏开始"),
+
+    /**
+     * DM 请求玩家使用技能
+     */
+    DM_REQUEST_SKILL("DM_REQUEST_SKILL", "DM请求技能");
 
     /**
      * 消息类型代码

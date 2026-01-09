@@ -57,9 +57,11 @@ public class GameServiceImpl implements GameService {
     private final CfgSkillService skillService;
     private final CfgDeckService deckService;
     private final SysUserService userService;
+    private final com.eys.service.sys.SysUserStatsService userStatsService;
     private final ApplicationEventPublisher eventPublisher;
     private final SkillValidator skillValidator;
     private final com.eys.engine.skill.SkillHandlerFactory skillHandlerFactory;
+    private final com.eys.engine.TargetCalculator targetCalculator;
 
     // ==================== 房间管理 ====================
 
@@ -94,6 +96,7 @@ public class GameServiceImpl implements GameService {
         record.setRoomCode(roomCode);
         record.setDmUserId(dmUserId);
         record.setMapId(dto.getMapId());
+        record.setRoleIds(JSON.toJSONString(roleIds)); // 持久化牌组
         record.setStatus(GameStatus.PREPARING.getCode());
         record.setCurrentRound(1);
         record.setCurrentStage(GameStage.START.getCode());
@@ -204,21 +207,21 @@ public class GameServiceImpl implements GameService {
             throw new BizException("房间内没有玩家");
         }
 
-        // TODO: 从数据库获取牌组角色ID列表，这里暂时用固定数据
-        // 实际应该在 CreateRoom 时保存牌组信息到对局记录中
+        // 从对局记录读取牌组（createRoom 时已持久化）
+        List<Long> roleIds = JSONArray.parseArray(record.getRoleIds(), Long.class);
+        if (roleIds == null || roleIds.isEmpty()) {
+            throw new BizException("牌组信息丢失，请重新创建房间");
+        }
+
+        if (roleIds.size() < players.size()) {
+            throw new BizException("角色数量不足，无法开始游戏");
+        }
 
         // 分配角色（内定 + 随机）
         Map<Long, Long> fixedRoles = dto.getFixedRoles() != null ? dto.getFixedRoles() : new HashMap<>();
 
-        // 获取所有可用角色
-        List<CfgRole> allRoles = roleService.list(new LambdaQueryWrapper<CfgRole>().eq(CfgRole::getIsEnabled, 1));
-
-        if (allRoles.size() < players.size()) {
-            throw new BizException("角色数量不足，无法开始游戏");
-        }
-
-        // 随机分配
-        List<Long> availableRoleIds = allRoles.stream().map(CfgRole::getId)
+        // 过滤出可用于随机分配的角色
+        List<Long> availableRoleIds = roleIds.stream()
                 .filter(roleId -> !fixedRoles.containsValue(roleId)).collect(Collectors.toList());
         Collections.shuffle(availableRoleIds);
 
@@ -288,24 +291,39 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.GAME_NOT_STARTED);
         }
 
-        // 如果是进入下一轮
-        if (Boolean.TRUE.equals(dto.getNextRound())) {
+        String oldStage = record.getCurrentStage();
+        String newStage;
+        boolean shouldIncrementRound = false;
+
+        // 自动计算下一阶段
+        switch (oldStage) {
+            case "START" -> newStage = GameStage.PRE_VOTE.getCode();
+            case "PRE_VOTE" -> newStage = GameStage.VOTE.getCode();
+            case "VOTE" -> newStage = GameStage.POST_VOTE.getCode();
+            case "POST_VOTE" -> {
+                newStage = GameStage.PRE_VOTE.getCode();
+                shouldIncrementRound = true; // POST_VOTE → PRE_VOTE 时轮数+1
+            }
+            default -> throw new BizException(ResultCode.PARAM_ERROR, "当前阶段无法切换: " + oldStage);
+        }
+
+        // 如果是进入下一轮（POST_VOTE → PRE_VOTE）
+        if (shouldIncrementRound) {
             record.setCurrentRound(record.getCurrentRound() + 1);
 
             // 【关键】进入下一轮时，清理所有 NEXT_ROUND 类型的 Tag
             playerStatusService.tickDownAndClearExpiredEffects(dto.getGameId());
-            log.info("已清理过期Tag: gameId={}", dto.getGameId());
+            log.info("已清理过期Tag并进入下一轮: gameId={}, round={}", dto.getGameId(), record.getCurrentRound());
         }
 
-        record.setCurrentStage(dto.getTargetStage());
+        record.setCurrentStage(newStage);
         gameRecordService.updateById(record);
 
-        log.info("阶段切换: gameId={}, stage={}, round={}", dto.getGameId(), dto.getTargetStage(),
+        log.info("阶段切换: gameId={}, {} -> {}, round={}", dto.getGameId(), oldStage, newStage,
                 record.getCurrentRound());
 
         // 发布阶段变更事件，触发 WebSocket 广播
-        String oldStage = record.getCurrentStage();
-        eventPublisher.publishEvent(new GameStageChangeEvent(this, dto.getGameId(), oldStage, dto.getTargetStage(),
+        eventPublisher.publishEvent(new GameStageChangeEvent(this, dto.getGameId(), oldStage, newStage,
                 record.getCurrentRound()));
     }
 
@@ -349,7 +367,8 @@ public class GameServiceImpl implements GameService {
             player.setIsWinner(isWinner ? 1 : 0);
             gamePlayerService.updateById(player);
 
-            // TODO: 更新用户战绩统计
+            // 更新用户战绩统计
+            userStatsService.updateStats(player.getUserId(), role.getCampType(), isWinner);
         }
 
         log.info("游戏结束: gameId={}, victoryType={}", dto.getGameId(), dto.getVictoryType());
@@ -378,12 +397,15 @@ public class GameServiceImpl implements GameService {
         List<SkillInstanceVO> skillVOs = mySkillInstances.stream().map(inst -> {
             CfgSkill skill = skillService.getById(inst.getSkillId());
             boolean canUse = canUseSkill(skill, record.getCurrentStage(), inst.getRemainCount());
+            // 计算可选目标
+            List<Long> validTargets = skill != null && skill.getInteractionType() >= 1
+                    ? targetCalculator.calculateValidTargets(gameId, myPlayer.getId(), skill, record.getCurrentRound())
+                    : List.of();
             return SkillInstanceVO.builder().id(inst.getId()).skillId(inst.getSkillId())
                     .skillName(skill != null ? skill.getName() : "")
                     .description(skill != null ? skill.getDescription() : "")
-                    .triggerMode(0) // 简化：使用固定值，前端根据 triggerPhases 判断
                     .interactionType(skill != null ? skill.getInteractionType() : 0).remainCount(inst.getRemainCount())
-                    .canUseNow(canUse).build();
+                    .canUseNow(canUse).validTargetIds(validTargets).build();
         }).toList();
 
         // 获取场上玩家（使用 PlayerSafeVO，不暴露其他玩家身份）
@@ -519,9 +541,29 @@ public class GameServiceImpl implements GameService {
 
     @Override
     public void dmRequestSkill(Long dmUserId, Long gameId, Long targetPlayerId, Long skillInstanceId) {
-        // TODO: 通过 WebSocket 向目标玩家推送技能使用请求
-        log.info("DM请求玩家使用技能: dmUserId={}, gameId={}, targetPlayerId={}, skillInstanceId={}", dmUserId, gameId,
-                targetPlayerId, skillInstanceId);
+        // 验证 DM 权限
+        GaGameRecord record = gameRecordService.getById(gameId);
+        if (record == null || !record.getDmUserId().equals(dmUserId)) {
+            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以请求玩家使用技能");
+        }
+
+        // 获取目标玩家信息
+        GaGamePlayer targetPlayer = gamePlayerService.getById(targetPlayerId);
+        if (targetPlayer == null) {
+            throw new BizException(ResultCode.PLAYER_NOT_IN_GAME);
+        }
+
+        // 获取技能信息
+        GaSkillInstance skillInstance = skillInstanceService.getById(skillInstanceId);
+        CfgSkill skill = skillInstance != null ? skillService.getById(skillInstance.getSkillId()) : null;
+        String skillName = skill != null ? skill.getName() : "";
+
+        // 发布事件，通过 WebSocket 向目标玩家推送技能使用请求
+        eventPublisher.publishEvent(new com.eys.service.event.DmRequestSkillEvent(
+                this, gameId, dmUserId, targetPlayerId, targetPlayer.getUserId(), skillInstanceId, skillName));
+
+        log.info("DM请求玩家使用技能: dmUserId={}, gameId={}, targetPlayerId={}, skillInstanceId={}",
+                dmUserId, gameId, targetPlayerId, skillInstanceId);
     }
 
     // ==================== 投票 ====================
@@ -551,7 +593,7 @@ public class GameServiceImpl implements GameService {
         }
 
         // 检查是否被禁言（状态效果）
-        if (playerStatusService.hasEffect(player.getId(), "MUTED")) {
+        if (playerStatusService.hasEffect(player.getId(), "禁言")) {
             throw new BizException(ResultCode.FORBIDDEN, "你已被禁言，无法投票");
         }
 
@@ -866,5 +908,77 @@ public class GameServiceImpl implements GameService {
      */
     private boolean canUseSkill(CfgSkill skill, String currentStage, int remainCount) {
         return skillValidator.canUseNow(skill, currentStage, remainCount);
+    }
+
+    // ==================== DM 视角 ====================
+
+    @Override
+    public List<com.eys.model.vo.game.DmPlayerViewVO> getDmFullView(Long dmUserId, Long gameId) {
+        GaGameRecord record = gameRecordService.getById(gameId);
+        if (record == null) {
+            throw new BizException(ResultCode.ROOM_NOT_FOUND);
+        }
+
+        // 验证 DM 权限
+        if (!record.getDmUserId().equals(dmUserId)) {
+            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以查看全局视角");
+        }
+
+        List<GaGamePlayer> players = gamePlayerService.listByGameId(gameId);
+        return players.stream().map(p -> {
+            SysUser user = userService.getById(p.getUserId());
+            GaPlayerStatus status = playerStatusService.getById(p.getId());
+            CfgRole initRole = p.getInitRoleId() != null ? roleService.getById(p.getInitRoleId()) : null;
+            CfgRole currRole = p.getCurrRoleId() != null ? roleService.getById(p.getCurrRoleId()) : null;
+
+            // 解析当前 Tag 列表
+            List<String> activeTags = new java.util.ArrayList<>();
+            if (status != null && status.getActiveEffects() != null) {
+                try {
+                    com.alibaba.fastjson2.JSONArray arr = com.alibaba.fastjson2.JSON
+                            .parseArray(status.getActiveEffects());
+                    for (int i = 0; i < arr.size(); i++) {
+                        com.alibaba.fastjson2.JSONObject obj = arr.getJSONObject(i);
+                        activeTags.add(obj.getString("name"));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
+            return com.eys.model.vo.game.DmPlayerViewVO.builder()
+                    .gamePlayerId(p.getId())
+                    .userId(p.getUserId())
+                    .nickname(user != null ? user.getNickname() : "")
+                    .seatNo(p.getSeatNo())
+                    .initRoleId(p.getInitRoleId())
+                    .initRoleName(initRole != null ? initRole.getName() : "")
+                    .currRoleId(p.getCurrRoleId())
+                    .currRoleName(currRole != null ? currRole.getName() : "")
+                    .campType(currRole != null ? currRole.getCampType() : null)
+                    .alive(status != null && status.getIsAlive() == 1)
+                    .activeTags(activeTags)
+                    .build();
+        }).toList();
+    }
+
+    @Override
+    public List<GaActionLog> getActionLogs(Long dmUserId, Long gameId, Integer roundNo) {
+        GaGameRecord record = gameRecordService.getById(gameId);
+        if (record == null) {
+            throw new BizException(ResultCode.ROOM_NOT_FOUND);
+        }
+
+        // 验证 DM 权限
+        if (!record.getDmUserId().equals(dmUserId)) {
+            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以查看动作日志");
+        }
+
+        if (roundNo != null) {
+            return actionLogService.listByGameAndRound(gameId, roundNo);
+        } else {
+            return actionLogService.list(new LambdaQueryWrapper<GaActionLog>()
+                    .eq(GaActionLog::getGameId, gameId)
+                    .orderByDesc(GaActionLog::getCreatedAt));
+        }
     }
 }

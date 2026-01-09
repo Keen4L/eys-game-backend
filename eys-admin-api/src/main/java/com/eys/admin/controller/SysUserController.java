@@ -1,5 +1,6 @@
 package com.eys.admin.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.secure.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/sys/user")
 @RequiredArgsConstructor
+@SaCheckRole("admin")
 public class SysUserController {
 
     private final SysUserService sysUserService;

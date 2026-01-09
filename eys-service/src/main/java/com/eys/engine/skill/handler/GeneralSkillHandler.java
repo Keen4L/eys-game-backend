@@ -1,6 +1,5 @@
 package com.eys.engine.skill.handler;
 
-import com.eys.common.constant.InteractionType;
 import com.eys.engine.skill.SkillContext;
 import com.eys.engine.skill.SkillHandler;
 import com.eys.engine.skill.SkillResult;
@@ -39,11 +38,6 @@ public class GeneralSkillHandler implements SkillHandler {
     @Override
     public String getHandlerKey() {
         return "GeneralSkillHandler";
-    }
-
-    @Override
-    public InteractionType getInteractionType() {
-        return InteractionType.PLAYER;
     }
 
     @Override

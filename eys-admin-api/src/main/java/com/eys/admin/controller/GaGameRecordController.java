@@ -1,5 +1,6 @@
 package com.eys.admin.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.eys.common.result.PageResult;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/ga/record")
 @RequiredArgsConstructor
+@SaCheckRole("admin")
 public class GaGameRecordController {
 
     private final GaGameRecordService gaGameRecordService;

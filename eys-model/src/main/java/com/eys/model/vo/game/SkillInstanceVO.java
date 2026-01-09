@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 技能实例VO
  *
@@ -39,12 +41,6 @@ public class SkillInstanceVO {
     private String description;
 
     /**
-     * 触发模式
-     */
-    @Schema(description = "触发模式: 0-玩家主动, 1-DM请求, 2-DM录入")
-    private Integer triggerMode;
-
-    /**
      * 交互类型
      */
     @Schema(description = "交互类型: 0-无需选择, 1-选择玩家, 2-选择玩家+角色")
@@ -61,4 +57,10 @@ public class SkillInstanceVO {
      */
     @Schema(description = "是否可在当前阶段使用")
     private Boolean canUseNow;
+
+    /**
+     * 可选目标玩家ID列表（后端计算好直接返回）
+     */
+    @Schema(description = "可选目标玩家ID列表")
+    private List<Long> validTargetIds;
 }
