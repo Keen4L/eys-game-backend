@@ -1,21 +1,15 @@
 package com.eys.engine.skill;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
-import com.eys.common.exception.BizException;
-import com.eys.common.result.ResultCode;
+import com.eys.engine.skill.handler.GeneralSkillHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * 技能处理器工厂
- * 根据 JSON 配置中的 handler_key 查找对应的 Spring Bean
+ * 技能处理器工厂 (重构版)
+ * 简化为直接返回 GeneralSkillHandler
  *
  * @author EYS
  */
@@ -24,94 +18,34 @@ import java.util.Map;
 public class SkillHandlerFactory {
 
     @Autowired
-    private ApplicationContext applicationContext;
+    private GeneralSkillHandler generalSkillHandler;
 
     /**
-     * 处理器缓存：handler_key -> SkillHandler
-     */
-    private final Map<String, SkillHandler> handlerMap = new HashMap<>();
-
-    /**
-     * 初始化：扫描所有 SkillHandler Bean 并注册
+     * 初始化日志
      */
     @PostConstruct
     public void init() {
-        Map<String, SkillHandler> beans = applicationContext.getBeansOfType(SkillHandler.class);
-        beans.forEach((beanName, handler) -> {
-            String key = handler.getHandlerKey();
-            handlerMap.put(key, handler);
-            log.info("注册技能处理器: {} -> {}", key, handler.getClass().getSimpleName());
-        });
-        log.info("技能处理器工厂初始化完成，共注册 {} 个处理器", handlerMap.size());
+        log.info("技能处理器工厂初始化完成（重构版）：仅使用 GeneralSkillHandler");
     }
 
     /**
-     * 根据 handler_key 获取处理器
+     * 根据 behaviorType 获取处理器
+     * 重构后统一使用 GeneralSkillHandler
      *
-     * @param handlerKey 处理器标识
+     * @param behaviorType 行为类型 (LOG/TAG/QUERY)
      * @return SkillHandler 实例
      */
-    public SkillHandler getHandler(String handlerKey) {
-        SkillHandler handler = handlerMap.get(handlerKey);
-        if (handler == null) {
-            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "未找到技能处理器: " + handlerKey);
-        }
-        return handler;
+    public SkillHandler getHandler(String behaviorType) {
+        // 重构后所有技能都由 GeneralSkillHandler 处理
+        // behaviorType 仅用于日志和调试
+        log.debug("获取技能处理器: behaviorType={}", behaviorType);
+        return generalSkillHandler;
     }
 
     /**
-     * 从技能 JSON 配置中解析 handler_key 并获取处理器
-     *
-     * @param skillLogicJson 技能逻辑 JSON 字符串
-     * @return SkillHandler 实例
+     * 获取默认处理器
      */
-    public SkillHandler getHandlerFromJson(String skillLogicJson) {
-        if (skillLogicJson == null || skillLogicJson.isBlank()) {
-            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "技能配置为空");
-        }
-
-        try {
-            JSONObject json = JSON.parseObject(skillLogicJson);
-            String handlerKey = json.getString("handler_key");
-            if (handlerKey == null || handlerKey.isBlank()) {
-                throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "缺少 handler_key 配置");
-            }
-            return getHandler(handlerKey);
-        } catch (Exception e) {
-            log.error("解析技能配置失败: {}", e.getMessage());
-            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE, "技能配置解析失败");
-        }
-    }
-
-    /**
-     * 从技能 JSON 配置中提取 config 部分
-     *
-     * @param skillLogicJson 技能逻辑 JSON 字符串
-     * @return config Map
-     */
-    public Map<String, Object> extractConfig(String skillLogicJson) {
-        if (skillLogicJson == null || skillLogicJson.isBlank()) {
-            return new HashMap<>();
-        }
-
-        try {
-            JSONObject json = JSON.parseObject(skillLogicJson);
-            JSONObject config = json.getJSONObject("config");
-            if (config != null) {
-                return config.to(new com.alibaba.fastjson2.TypeReference<Map<String, Object>>() {
-                });
-            }
-            return new HashMap<>();
-        } catch (Exception e) {
-            log.warn("提取技能 config 失败: {}", e.getMessage());
-            return new HashMap<>();
-        }
-    }
-
-    /**
-     * 检查是否存在指定处理器
-     */
-    public boolean hasHandler(String handlerKey) {
-        return handlerMap.containsKey(handlerKey);
+    public SkillHandler getDefaultHandler() {
+        return generalSkillHandler;
     }
 }

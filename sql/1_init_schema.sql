@@ -1,5 +1,5 @@
 -- ==========================================
--- 鹅鸭杀辅助工具数据库初始化脚本
+-- 鹅鸭杀辅助工具数据库结构初始化 (1_init_schema.sql)
 -- ==========================================
 
 -- 创建数据库
@@ -85,18 +85,39 @@ CREATE TABLE IF NOT EXISTS `cfg_role` (
   `is_enabled` tinyint DEFAULT 1 COMMENT '是否启用: 1-启用, 0-禁用'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色基础信息';
 
--- 2.4 技能规则定义 (核心)
+-- 2.4 技能规则定义 (核心) - 重构版
 CREATE TABLE IF NOT EXISTS `cfg_skill` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `role_id` bigint NOT NULL COMMENT '所属角色',
-  `name` varchar(50) NOT NULL COMMENT '技能名称',
-  `interaction_type` tinyint NOT NULL DEFAULT 1 COMMENT '交互类型: 0-NONE, 1-PLAYER, 2-PLAYER_ROLE',
-  `trigger_mode` tinyint DEFAULT 0 COMMENT '触发模式: 0-PLAYER_ACTIVE, 1-DM_REQUEST, 2-DM_INPUT',
-  `skill_logic` json NOT NULL COMMENT '规则集JSON: phases, usage, target, constraints',
+  `name` varchar(50) NOT NULL COMMENT '技能名称 (同时也是Tag名称)',
+  
+  -- [A. 什么时候推?]
+  `trigger_phases` varchar(100) DEFAULT 'PRE_VOTE' COMMENT '自动分发阶段(逗号分隔), 空则仅DM手动推',
+  
+  -- [B. 前端怎么显?]
+  `interaction_type` tinyint NOT NULL DEFAULT 1 COMMENT '0:直接触发, 1:选人, 2:选人+猜身份',
+  `target_count` int DEFAULT 1 COMMENT '选几个人',
+
+  -- [C. 限制条件]
+  `max_usage_total` int DEFAULT -1 COMMENT '全局总次数,-1无限',
+  `max_usage_round` int DEFAULT 1 COMMENT '每轮次数',
+  `target_alive_state` tinyint DEFAULT 1 COMMENT '1-活人, 2-死人, 0-不限',
+  `exclude_self` tinyint DEFAULT 1 COMMENT '1-排除自己, 0-可选自己',
+
+  -- [D. 后端干什么?]
+  `behavior_type` varchar(20) NOT NULL DEFAULT 'LOG' COMMENT 'LOG:纯记录, TAG:记录+贴标签, QUERY:记录+查验反馈',
+  
+  -- [E. 标签生命周期] (仅 TAG 类型有效)
+  `tag_expiry_rule` varchar(50) DEFAULT 'NEXT_ROUND' COMMENT 'NEXT_ROUND:下轮失效, PELICAN:鹈鹕存活则在, PERMANENT:永久',
+  `tag_restriction` varchar(50) DEFAULT 'NONE' COMMENT 'BLOCK_SKILL:禁止接收技能推送, NONE:无限制',
+  
+  -- [F. 查验字段] (仅 QUERY 类型有效)
+  `query_field` varchar(50) DEFAULT NULL COMMENT 'ROLE_ID:角色ID, CAMP_TYPE:阵营, IS_DUCK:是否是鸭',
+
   `img_url` varchar(255) COMMENT '技能图标URL',
   `description` varchar(255) COMMENT '技能描述',
   INDEX `idx_role` (`role_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能逻辑配置表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能逻辑配置表(重构版)';
 
 -- 2.5 预设牌组
 CREATE TABLE IF NOT EXISTS `cfg_deck` (
@@ -206,18 +227,3 @@ CREATE TABLE IF NOT EXISTS `ga_player_spawn` (
   `spawn_point_id` bigint NOT NULL COMMENT '关联 cfg_map_spawn_point',
   UNIQUE KEY `uk_round_spawn` (`game_id`, `round_no`, `game_player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='玩家每轮次出生位置记录';
-
-
--- ==========================================
--- 5. 初始化数据
--- ==========================================
-
--- 插入默认管理员账号（密码: admin123，使用 BCrypt 加密）
-INSERT INTO `sys_user` (`username`, `password`, `nickname`, `role_type`, `is_enabled`) 
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt4vVQO', '超级管理员', 2, 1)
-ON DUPLICATE KEY UPDATE `nickname` = VALUES(`nickname`);
-
--- 初始化管理员战绩
-INSERT INTO `sys_user_stats` (`user_id`, `total_matches`, `total_wins`, `goose_wins`, `duck_wins`, `neutral_wins`)
-SELECT id, 0, 0, 0, 0, 0 FROM `sys_user` WHERE `username` = 'admin'
-ON DUPLICATE KEY UPDATE `user_id` = VALUES(`user_id`);

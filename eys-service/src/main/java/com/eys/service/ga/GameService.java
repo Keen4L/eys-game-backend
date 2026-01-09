@@ -159,4 +159,25 @@ public interface GameService {
      * @param targetPlayerId 目标对局玩家ID
      */
     void revivePlayer(Long dmUserId, Long gameId, Long targetPlayerId);
+
+    /**
+     * DM移除玩家标签
+     *
+     * @param dmUserId       DM用户ID
+     * @param gameId         游戏ID
+     * @param targetPlayerId 目标对局玩家ID
+     * @param tagName        标签名称
+     */
+    void removeTag(Long dmUserId, Long gameId, Long targetPlayerId, String tagName);
+
+    /**
+     * DM代替玩家释放技能
+     *
+     * @param dmUserId        DM用户ID
+     * @param gameId          游戏ID
+     * @param actorPlayerId   释放者对局玩家ID
+     * @param skillInstanceId 技能实例ID
+     * @param targetPlayerId  目标对局玩家ID (可选)
+     */
+    void proxyCastSkill(Long dmUserId, Long gameId, Long actorPlayerId, Long skillInstanceId, Long targetPlayerId);
 }

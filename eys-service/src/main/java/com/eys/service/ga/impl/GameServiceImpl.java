@@ -252,14 +252,11 @@ public class GameServiceImpl implements GameService {
                 instance.setGamePlayerId(player.getId());
                 instance.setSkillId(skill.getId());
 
-                // 使用 SkillValidator 解析技能配置（替代手动 JSON 解析）
+                // 使用新的扁平化字段获取技能初始次数
                 int initialCount = skillValidator.getInitialCount(skill);
                 instance.setRemainCount(initialCount);
                 instance.setIsActive(1);
-
-                // 使用 SkillValidator 解析技能组ID
-                Long groupId = skillValidator.getGroupId(skill);
-                instance.setGroupId(groupId);
+                instance.setGroupId(null); // 扁平化后不再使用技能组
 
                 skillInstanceService.save(instance);
             }
@@ -380,7 +377,7 @@ public class GameServiceImpl implements GameService {
             return SkillInstanceVO.builder().id(inst.getId()).skillId(inst.getSkillId())
                     .skillName(skill != null ? skill.getName() : "")
                     .description(skill != null ? skill.getDescription() : "")
-                    .triggerMode(skill != null ? skill.getTriggerMode() : 0)
+                    .triggerMode(0) // 简化：使用固定值，前端根据 triggerPhases 判断
                     .interactionType(skill != null ? skill.getInteractionType() : 0).remainCount(inst.getRemainCount())
                     .canUseNow(canUse).build();
         }).toList();
@@ -434,14 +431,12 @@ public class GameServiceImpl implements GameService {
         // 使用 SkillValidator 校验（阶段、次数、目标）
         skillValidator.validate(skill, instance, record, actorStatus, dto.getTargetPlayerIds(), null);
 
-        // 【策略模式】根据技能配置获取对应的 Handler
-        String skillLogicJson = skill.getSkillLogic();
-        com.eys.engine.skill.SkillHandler handler = skillHandlerFactory.getHandlerFromJson(skillLogicJson);
-        Map<String, Object> config = skillHandlerFactory.extractConfig(skillLogicJson);
+        // 【重构版】直接使用 GeneralSkillHandler 处理所有技能
+        com.eys.engine.skill.SkillHandler handler = skillHandlerFactory.getHandler(skill.getBehaviorType());
 
         // 构建技能执行上下文
         com.eys.engine.skill.SkillContext context = com.eys.engine.skill.SkillContext.builder().skill(skill)
-                .config(config).actor(player).actorStatus(actorStatus).targetPlayerIds(dto.getTargetPlayerIds())
+                .actor(player).actorStatus(actorStatus).targetPlayerIds(dto.getTargetPlayerIds())
                 .guessRoleId(dto.getGuessRoleId()).gameRecord(record).currentRound(record.getCurrentRound())
                 .currentStage(record.getCurrentStage()).build();
 
@@ -726,6 +721,86 @@ public class GameServiceImpl implements GameService {
             eventPublisher.publishEvent(
                     new PlayerStatusChangeEvent(this, gameId, targetPlayerId, player.getUserId(), true, "REVIVE"));
         }
+    }
+
+    @Override
+    @Transactional
+    public void removeTag(Long dmUserId, Long gameId, Long targetPlayerId, String tagName) {
+        GaGameRecord record = gameRecordService.getById(gameId);
+        if (record == null) {
+            throw new BizException(ResultCode.ROOM_NOT_FOUND);
+        }
+
+        if (!record.getDmUserId().equals(dmUserId)) {
+            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以移除标签");
+        }
+
+        // 移除状态效果
+        playerStatusService.removeEffect(targetPlayerId, tagName);
+
+        // 记录动作
+        GaActionLog actionLog = new GaActionLog();
+        actionLog.setGameId(gameId);
+        actionLog.setRoundNo(record.getCurrentRound());
+        actionLog.setStage(record.getCurrentStage());
+        actionLog.setSourceType(1);
+        actionLog.setActionType("REMOVE_TAG");
+        actionLog.setActorId(0L);
+        actionLog.setActionData(JSON.toJSONString(Map.of("target_id", targetPlayerId, "tag_name", tagName)));
+        actionLog.setResultNote("DM移除标签: " + tagName);
+        actionLogService.save(actionLog);
+
+        log.info("DM移除玩家标签: gameId={}, targetPlayerId={}, tagName={}", gameId, targetPlayerId, tagName);
+    }
+
+    @Override
+    @Transactional
+    public void proxyCastSkill(Long dmUserId, Long gameId, Long actorPlayerId, Long skillInstanceId,
+            Long targetPlayerId) {
+        GaGameRecord record = gameRecordService.getById(gameId);
+        if (record == null) {
+            throw new BizException(ResultCode.ROOM_NOT_FOUND);
+        }
+
+        if (!record.getDmUserId().equals(dmUserId)) {
+            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以代替玩家释放技能");
+        }
+
+        // 获取技能实例
+        GaSkillInstance instance = skillInstanceService.getById(skillInstanceId);
+        if (instance == null || !instance.getGamePlayerId().equals(actorPlayerId)) {
+            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE);
+        }
+
+        CfgSkill skill = skillService.getById(instance.getSkillId());
+        if (skill == null) {
+            throw new BizException(ResultCode.SKILL_NOT_AVAILABLE);
+        }
+
+        GaGamePlayer actor = gamePlayerService.getById(actorPlayerId);
+        if (actor == null) {
+            throw new BizException(ResultCode.PLAYER_NOT_IN_GAME);
+        }
+
+        // 扣减技能次数
+        skillInstanceService.deductUsage(instance.getId());
+
+        // 记录动作
+        GaActionLog actionLog = new GaActionLog();
+        actionLog.setGameId(gameId);
+        actionLog.setRoundNo(record.getCurrentRound());
+        actionLog.setStage(record.getCurrentStage());
+        actionLog.setSourceType(1); // DM代操作
+        actionLog.setActionType("SKILL");
+        actionLog.setActorId(actorPlayerId);
+        actionLog.setSkillId(skill.getId());
+        actionLog.setActionData(JSON.toJSONString(Map.of(
+                "target_ids", targetPlayerId != null ? List.of(targetPlayerId) : List.of(),
+                "proxy_by_dm", true)));
+        actionLog.setResultNote("[DM代操] 玩家" + actor.getSeatNo() + " 使用了 " + skill.getName());
+        actionLogService.save(actionLog);
+
+        log.info("DM代替玩家释放技能: gameId={}, actorPlayerId={}, skillId={}", gameId, actorPlayerId, skill.getId());
     }
 
     // ==================== 私有方法 ====================

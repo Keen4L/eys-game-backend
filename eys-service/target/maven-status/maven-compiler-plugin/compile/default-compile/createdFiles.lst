@@ -11,7 +11,6 @@ com\eys\service\ga\GaGamePlayerService.class
 com\eys\engine\skill\SkillResult$SkillResultBuilder.class
 com\eys\service\sys\impl\SysUserServiceImpl.class
 com\eys\service\cfg\CfgMapSpawnPointService.class
-com\eys\engine\skill\handler\BombHandler.class
 com\eys\service\event\GameStageChangeEvent.class
 com\eys\service\sys\impl\SysUserStatsServiceImpl.class
 com\eys\service\cfg\impl\CfgDeckServiceImpl.class
@@ -19,7 +18,6 @@ com\eys\service\event\SkillUsedEvent.class
 com\eys\service\ga\impl\GaActionLogServiceImpl.class
 com\eys\service\ga\GaGameRecordService.class
 com\eys\service\ga\GaActionLogService.class
-com\eys\engine\skill\handler\AssassinHandler.class
 com\eys\engine\skill\SkillContext$SkillContextBuilder.class
 com\eys\service\ga\GameService.class
 com\eys\engine\skill\SkillHandler.class
@@ -30,15 +28,12 @@ com\eys\engine\skill\SkillContext.class
 com\eys\service\ga\GaPlayerStatusService.class
 com\eys\service\event\PlayerStatusChangeEvent.class
 com\eys\service\ga\impl\GaGameRecordServiceImpl.class
-com\eys\engine\skill\handler\GeneralSkillHandler$ActionConfig.class
 com\eys\service\cfg\impl\CfgRoleServiceImpl.class
-com\eys\engine\skill\handler\PelicanHandler.class
 com\eys\engine\skill\SkillResult.class
 com\eys\service\cfg\CfgDeckService.class
 com\eys\service\sys\SysUserStatsService.class
 com\eys\service\cfg\CfgSkillService.class
 com\eys\service\cfg\impl\CfgMapServiceImpl.class
-com\eys\engine\skill\handler\MagicHandler.class
 com\eys\service\ga\impl\GaSkillInstanceServiceImpl.class
 com\eys\engine\skill\handler\GeneralSkillHandler.class
 com\eys\service\ga\GaVoteLogService.class

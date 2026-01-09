@@ -67,4 +67,28 @@ public class DmGameController {
         gameService.endGame(dmUserId, dto);
         return R.ok();
     }
+
+    /**
+     * DM 移除玩家标签
+     */
+    @PostMapping("/admin/removeTag")
+    @Operation(summary = "移除状态标签", description = "DM 手动移除玩家身上的状态标签")
+    public R<Void> removeTag(@RequestParam Long gameId, @RequestParam Long targetPlayerId,
+            @RequestParam String tagName) {
+        Long dmUserId = StpUtil.getLoginIdAsLong();
+        gameService.removeTag(dmUserId, gameId, targetPlayerId, tagName);
+        return R.ok();
+    }
+
+    /**
+     * DM 代替玩家释放技能
+     */
+    @PostMapping("/admin/proxyCast")
+    @Operation(summary = "代替玩家释放技能", description = "DM 帮玩家点技能（玩家掉线或不会玩时）")
+    public R<Void> proxyCastSkill(@RequestParam Long gameId, @RequestParam Long actorPlayerId,
+            @RequestParam Long skillInstanceId, @RequestParam(required = false) Long targetPlayerId) {
+        Long dmUserId = StpUtil.getLoginIdAsLong();
+        gameService.proxyCastSkill(dmUserId, gameId, actorPlayerId, skillInstanceId, targetPlayerId);
+        return R.ok();
+    }
 }
