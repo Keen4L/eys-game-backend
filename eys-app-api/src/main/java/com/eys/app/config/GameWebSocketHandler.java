@@ -120,7 +120,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         gameSessions.forEach((userId, session) -> {
             if (session.isOpen()) {
                 try {
-                    session.sendMessage(new TextMessage(payload));
+                    if (payload != null) {
+                        session.sendMessage(new TextMessage(payload));
+                    }
                 } catch (IOException e) {
                     log.error("推送消息失败: userId={}, error={}", userId, e.getMessage());
                 }
@@ -150,8 +152,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         String payload = JSON.toJSONString(wsMessage);
 
         try {
-            session.sendMessage(new TextMessage(payload));
-            log.debug("推送消息给用户: gameId={}, userId={}, type={}", gameId, userId, type.getCode());
+            if (payload != null) {
+                session.sendMessage(new TextMessage(payload));
+                log.debug("推送消息给用户: gameId={}, userId={}, type={}", gameId, userId, type.getCode());
+            }
         } catch (IOException e) {
             log.error("推送消息失败: userId={}, error={}", userId, e.getMessage());
         }
@@ -179,7 +183,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // 排除指定用户
             if (!userId.equals(excludeUserId) && session.isOpen()) {
                 try {
-                    session.sendMessage(new TextMessage(payload));
+                    if (payload != null) {
+                        session.sendMessage(new TextMessage(payload));
+                    }
                 } catch (IOException e) {
                     log.error("推送消息失败: userId={}, error={}", userId, e.getMessage());
                 }

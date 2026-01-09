@@ -88,8 +88,8 @@ public class GameServiceImpl implements GameService {
             throw new BizException("请选择预设牌组或自定义角色列表");
         }
 
-        // 生成房间码（6位大写字母+数字）
-        String roomCode = generateRoomCode();
+        // 生成唯一房间码（带重试机制）
+        String roomCode = generateUniqueRoomCode();
 
         // 创建对局记录
         GaGameRecord record = new GaGameRecord();
@@ -191,11 +191,6 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        // 验证DM
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以开始游戏");
-        }
-
         // 验证状态
         if (!GameStatus.PREPARING.getCode().equals(record.getStatus())) {
             throw new BizException("游戏已开始或已结束");
@@ -281,11 +276,6 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        // 验证DM
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以切换阶段");
-        }
-
         // 验证游戏状态
         if (!GameStatus.PLAYING.getCode().equals(record.getStatus())) {
             throw new BizException(ResultCode.GAME_NOT_STARTED);
@@ -335,11 +325,6 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        // 验证DM
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以结束游戏");
-        }
-
         // 更新游戏记录
         record.setStatus(GameStatus.FINISHED.getCode());
         record.setCurrentStage(GameStage.END.getCode());
@@ -352,8 +337,10 @@ public class GameServiceImpl implements GameService {
         List<GaGamePlayer> players = gamePlayerService.listByGameId(dto.getGameId());
         for (GaGamePlayer player : players) {
             CfgRole role = roleService.getById(player.getCurrRoleId());
-            if (role == null)
+            if (role == null) {
+                log.warn("角色不存在，跳过战绩统计: gamePlayerId={}, roleId={}", player.getId(), player.getCurrRoleId());
                 continue;
+            }
 
             boolean isWinner = false;
             if (dto.getVictoryType() == 1 && role.getCampType() == CampType.GOOSE.getCode()) {
@@ -856,6 +843,25 @@ public class GameServiceImpl implements GameService {
      */
     private String generateRoomCode() {
         return RandomUtil.randomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 6);
+    }
+
+    /**
+     * 生成唯一房间码（带重试和冲突检查）
+     */
+    private String generateUniqueRoomCode() {
+        int maxRetries = 10;
+        for (int i = 0; i < maxRetries; i++) {
+            String roomCode = generateRoomCode();
+            // 检查是否已存在
+            long count = gameRecordService.count(
+                    new LambdaQueryWrapper<GaGameRecord>()
+                            .eq(GaGameRecord::getRoomCode, roomCode));
+            if (count == 0) {
+                return roomCode;
+            }
+            log.warn("房间码冲突，重试: roomCode={}, attempt={}/{}", roomCode, i + 1, maxRetries);
+        }
+        throw new BizException("生成房间码失败，请稍后重试");
     }
 
     /**
