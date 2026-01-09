@@ -17,8 +17,12 @@ C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\ser
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgSkillServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\DmRequestSkillEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\GameStageChangeEvent.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\GameStartedEvent.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\PlayerJoinedEvent.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\PlayerLeftEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\PlayerStatusChangeEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\SkillUsedEvent.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\VoteSubmittedEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaActionLogService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaGamePlayerService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\GaGameRecordService.java

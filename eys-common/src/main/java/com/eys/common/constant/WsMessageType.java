@@ -70,7 +70,12 @@ public enum WsMessageType {
     /**
      * DM 请求玩家使用技能
      */
-    DM_REQUEST_SKILL("DM_REQUEST_SKILL", "DM请求技能");
+    DM_REQUEST_SKILL("DM_REQUEST_SKILL", "DM请求技能"),
+
+    /**
+     * 投票进度更新（给 DM 看）
+     */
+    VOTE_PROGRESS("VOTE_PROGRESS", "投票进度");
 
     /**
      * 消息类型代码

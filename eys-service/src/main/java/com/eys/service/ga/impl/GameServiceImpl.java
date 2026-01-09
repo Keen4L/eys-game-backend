@@ -137,7 +137,17 @@ public class GameServiceImpl implements GameService {
         player.setIsWinner(0);
         gamePlayerService.save(player);
 
+        // 获取用户信息
+        SysUser user = userService.getById(userId);
+
         log.info("玩家加入房间: userId={}, gameId={}", userId, record.getId());
+
+        // 发布玩家加入事件
+        eventPublisher.publishEvent(new com.eys.service.event.PlayerJoinedEvent(
+                this, record.getId(), userId,
+                user != null ? user.getNickname() : "",
+                user != null ? user.getAvatarUrl() : "",
+                player.getSeatNo()));
 
         return getRoomInfo(record.getId(), userId);
     }
@@ -159,6 +169,10 @@ public class GameServiceImpl implements GameService {
         if (player != null) {
             gamePlayerService.removeById(player.getId());
             log.info("玩家退出房间: userId={}, gameId={}", userId, gameId);
+
+            // 发布玩家退出事件
+            eventPublisher.publishEvent(new com.eys.service.event.PlayerLeftEvent(
+                    this, gameId, userId));
         }
     }
 
@@ -262,13 +276,17 @@ public class GameServiceImpl implements GameService {
 
         // 更新游戏状态
         record.setStatus(GameStatus.PLAYING.getCode());
+        record.setCurrentStage(GameStage.PREPARING.getCode()); // 设置为 PREPARING，等 DM 推进
         record.setStartedAt(LocalDateTime.now());
         gameRecordService.updateById(record);
 
-        log.info("游戏开始: gameId={}, playerCount={}", dto.getGameId(), players.size());
+        log.info("游戏开始: gameId={}, playerCount={}, stage=PREPARING", dto.getGameId(), players.size());
 
-        // 【关键】推送 START 阶段的技能给对应玩家
-        pushSkillsForStage(dto.getGameId(), players, "START");
+        // 发布游戏开始事件
+        eventPublisher.publishEvent(new com.eys.service.event.GameStartedEvent(
+                this, dto.getGameId(), GameStage.PREPARING.getCode(), record.getCurrentRound()));
+
+        // 不推送技能！等 DM 推进阶段时再推送
     }
 
     /**
@@ -324,6 +342,7 @@ public class GameServiceImpl implements GameService {
 
         // 自动计算下一阶段
         switch (oldStage) {
+            case "PREPARING" -> newStage = GameStage.START.getCode(); // 新增：PREPARING → START
             case "START" -> newStage = GameStage.PRE_VOTE.getCode();
             case "PRE_VOTE" -> newStage = GameStage.VOTE.getCode();
             case "VOTE" -> newStage = GameStage.POST_VOTE.getCode();
@@ -640,6 +659,17 @@ public class GameServiceImpl implements GameService {
         voteLogService.save(voteLog);
 
         log.info("玩家投票: userId={}, gameId={}, targetId={}", userId, dto.getGameId(), dto.getTargetPlayerId());
+
+        // 统计投票进度，发布事件通知 DM
+        List<GaGamePlayer> allPlayers = gamePlayerService.listByGameId(dto.getGameId());
+        int totalVoters = (int) allPlayers.stream().filter(p -> {
+            GaPlayerStatus s = playerStatusService.getById(p.getId());
+            return s != null && s.getIsAlive() == 1;
+        }).count();
+        int votedCount = (int) voteLogService.listByGameAndRound(dto.getGameId(), record.getCurrentRound()).size();
+
+        eventPublisher.publishEvent(new com.eys.service.event.VoteSubmittedEvent(
+                this, dto.getGameId(), record.getDmUserId(), votedCount, totalVoters));
     }
 
     @Override

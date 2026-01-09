@@ -110,4 +110,70 @@ public class GameEventListener {
                 webSocketHandler.sendToUser(event.getGameId(), event.getTargetUserId(),
                                 WsMessageType.DM_REQUEST_SKILL, data);
         }
+
+        /**
+         * 监听玩家加入房间事件
+         */
+        @Async
+        @EventListener
+        public void handlePlayerJoined(com.eys.service.event.PlayerJoinedEvent event) {
+                log.info("收到玩家加入事件: gameId={}, userId={}, nickname={}",
+                                event.getGameId(), event.getUserId(), event.getNickname());
+
+                Map<String, Object> data = Map.of(
+                                "userId", event.getUserId(),
+                                "nickname", event.getNickname(),
+                                "avatarUrl", event.getAvatarUrl() != null ? event.getAvatarUrl() : "",
+                                "seatNo", event.getSeatNo());
+
+                webSocketHandler.broadcastToGame(event.getGameId(), WsMessageType.PLAYER_JOIN, data);
+        }
+
+        /**
+         * 监听玩家退出房间事件
+         */
+        @Async
+        @EventListener
+        public void handlePlayerLeft(com.eys.service.event.PlayerLeftEvent event) {
+                log.info("收到玩家退出事件: gameId={}, userId={}", event.getGameId(), event.getUserId());
+
+                Map<String, Object> data = Map.of("userId", event.getUserId());
+
+                webSocketHandler.broadcastToGame(event.getGameId(), WsMessageType.PLAYER_LEAVE, data);
+        }
+
+        /**
+         * 监听游戏开始事件
+         */
+        @Async
+        @EventListener
+        public void handleGameStarted(com.eys.service.event.GameStartedEvent event) {
+                log.info("收到游戏开始事件: gameId={}, stage={}, round={}",
+                                event.getGameId(), event.getStage(), event.getRound());
+
+                Map<String, Object> data = Map.of(
+                                "stage", event.getStage(),
+                                "round", event.getRound());
+
+                webSocketHandler.broadcastToGame(event.getGameId(), WsMessageType.GAME_START, data);
+        }
+
+        /**
+         * 监听投票进度事件（只通知 DM）
+         */
+        @Async
+        @EventListener
+        public void handleVoteSubmitted(com.eys.service.event.VoteSubmittedEvent event) {
+                log.info("收到投票进度事件: gameId={}, votedCount={}/{}",
+                                event.getGameId(), event.getVotedCount(), event.getTotalVoters());
+
+                Map<String, Object> data = Map.of(
+                                "votedCount", event.getVotedCount(),
+                                "totalVoters", event.getTotalVoters(),
+                                "completed", event.getVotedCount() >= event.getTotalVoters());
+
+                // 只发送给 DM
+                webSocketHandler.sendToUser(event.getGameId(), event.getDmUserId(),
+                                WsMessageType.VOTE_PROGRESS, data);
+        }
 }

@@ -14,6 +14,11 @@ import lombok.Getter;
 public enum GameStage {
 
     /**
+     * 准备阶段：游戏已开始，等待 DM 推进到 START
+     */
+    PREPARING("PREPARING", "准备阶段"),
+
+    /**
      * 开始阶段：分发身份牌，开局技能释放
      */
     START("START", "开始阶段"),
