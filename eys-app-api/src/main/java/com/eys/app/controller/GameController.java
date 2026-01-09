@@ -7,6 +7,7 @@ import com.eys.model.dto.game.VoteDTO;
 import com.eys.model.vo.game.PlayerGameVO;
 import com.eys.model.vo.game.VoteResultVO;
 import com.eys.service.ga.GameService;
+import com.eys.service.ga.VoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 public class GameController {
 
     private final GameService gameService;
+    private final VoteService voteService;
 
     // ==================== 玩家视角 ====================
 
@@ -64,7 +66,7 @@ public class GameController {
     @PostMapping("/vote")
     public R<Void> vote(@Valid @RequestBody VoteDTO dto) {
         Long userId = StpUtil.getLoginIdAsLong();
-        gameService.vote(userId, dto);
+        voteService.vote(userId, dto);
         return R.ok();
     }
 
@@ -76,6 +78,6 @@ public class GameController {
     public R<VoteResultVO> getVoteResult(
             @Parameter(description = "游戏ID") @PathVariable Long gameId,
             @Parameter(description = "轮次，不传则取当前轮次") @RequestParam(required = false) Integer roundNo) {
-        return R.ok(gameService.getVoteResult(gameId, roundNo));
+        return R.ok(voteService.getVoteResult(gameId, roundNo));
     }
 }

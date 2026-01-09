@@ -51,6 +51,7 @@ public enum ResultCode {
     USER_DISABLED(1002, "用户已被禁用"),
     USERNAME_EXISTS(1003, "用户名已存在"),
     PASSWORD_ERROR(1004, "密码错误"),
+    WX_LOGIN_FAILED(1005, "微信登录失败"),
 
     // ==================== 游戏错误码 (2xxx) ====================
     /**

@@ -15,6 +15,8 @@ C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\ser
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgMapSpawnPointServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgRoleServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\cfg\impl\CfgSkillServiceImpl.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\config\StpInterfaceImpl.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\config\WechatConfig.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\DmRequestSkillEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\GameStageChangeEvent.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\event\GameStartedEvent.java
@@ -38,6 +40,10 @@ C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\ser
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\impl\GaPlayerStatusServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\impl\GaSkillInstanceServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\impl\GaVoteLogServiceImpl.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\impl\RoomServiceImpl.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\impl\VoteServiceImpl.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\RoomService.java
+C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\ga\VoteService.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\sys\impl\SysUserServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\sys\impl\SysUserStatsRoleServiceImpl.java
 C:\Users\root\Desktop\eys\eys-game-backend\eys-service\src\main\java\com\eys\service\sys\impl\SysUserStatsServiceImpl.java

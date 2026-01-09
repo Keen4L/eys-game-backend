@@ -28,10 +28,12 @@ public class GamePermissionService {
 
     /**
      * 校验当前用户是否具有 DM 权限
-     * 检查 SysUser.roleType = DM (1) 或 ADMIN (2)
+     * 1. 检查房间存在
+     * 2. 检查用户是否是该房间的 DM（dmUserId）
+     * 3. 或者用户 roleType = ADMIN（管理员可以操作任何房间）
      *
-     * @param gameId 游戏ID（用于校验房间存在）
-     * @throws BizException 如果不是 DM 则抛出异常
+     * @param gameId 游戏ID
+     * @throws BizException 如果不是该房间的 DM 则抛出异常
      */
     public void assertDm(Long gameId) {
         Long userId = StpUtil.getLoginIdAsLong();
@@ -42,15 +44,15 @@ public class GamePermissionService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        // 校验用户 roleType 是否为 DM 或管理员
+        // 管理员可以操作任何房间
         SysUser user = userService.getById(userId);
-        if (user == null) {
-            throw new BizException(ResultCode.USER_NOT_FOUND);
+        if (user != null && RoleType.ADMIN.getCode().equals(user.getRoleType())) {
+            return;
         }
 
-        Integer roleType = user.getRoleType();
-        if (!RoleType.DM.getCode().equals(roleType) && !RoleType.ADMIN.getCode().equals(roleType)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以执行此操作");
+        // 校验是否是该房间的 DM
+        if (!record.getDmUserId().equals(userId)) {
+            throw new BizException(ResultCode.FORBIDDEN, "只有该房间的 DM 可以执行此操作");
         }
     }
 

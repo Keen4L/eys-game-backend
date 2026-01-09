@@ -1,6 +1,5 @@
 package com.eys.service.ga.impl;
 
-import cn.hutool.core.util.RandomUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -8,15 +7,11 @@ import com.eys.common.constant.*;
 import com.eys.common.exception.BizException;
 import com.eys.common.result.ResultCode;
 import com.eys.model.dto.game.*;
-import com.eys.model.entity.cfg.CfgDeck;
-import com.eys.model.entity.cfg.CfgMap;
 import com.eys.model.entity.cfg.CfgRole;
 import com.eys.model.entity.cfg.CfgSkill;
 import com.eys.model.entity.ga.*;
 import com.eys.model.entity.sys.SysUser;
 import com.eys.model.vo.game.*;
-import com.eys.service.cfg.CfgDeckService;
-import com.eys.service.cfg.CfgMapService;
 import com.eys.service.cfg.CfgRoleService;
 import com.eys.service.cfg.CfgSkillService;
 import com.eys.service.ga.*;
@@ -51,149 +46,14 @@ public class GameServiceImpl implements GameService {
     private final GaPlayerStatusService playerStatusService;
     private final GaSkillInstanceService skillInstanceService;
     private final GaActionLogService actionLogService;
-    private final GaVoteLogService voteLogService;
-    private final CfgMapService mapService;
     private final CfgRoleService roleService;
     private final CfgSkillService skillService;
-    private final CfgDeckService deckService;
     private final SysUserService userService;
     private final com.eys.service.sys.SysUserStatsService userStatsService;
     private final ApplicationEventPublisher eventPublisher;
     private final SkillValidator skillValidator;
     private final com.eys.engine.skill.SkillHandlerFactory skillHandlerFactory;
     private final com.eys.engine.TargetCalculator targetCalculator;
-
-    // ==================== 房间管理 ====================
-
-    @Override
-    @Transactional
-    public RoomVO createRoom(Long dmUserId, CreateRoomDTO dto) {
-        // 验证地图存在
-        CfgMap map = mapService.getById(dto.getMapId());
-        if (map == null) {
-            throw new BizException(ResultCode.MAP_NOT_FOUND);
-        }
-
-        // 确定角色列表
-        List<Long> roleIds;
-        if (dto.getRoleIds() != null && !dto.getRoleIds().isEmpty()) {
-            roleIds = dto.getRoleIds();
-        } else if (dto.getDeckId() != null) {
-            CfgDeck deck = deckService.getById(dto.getDeckId());
-            if (deck == null) {
-                throw new BizException(ResultCode.DECK_NOT_FOUND);
-            }
-            roleIds = JSONArray.parseArray(deck.getRoleIds(), Long.class);
-        } else {
-            throw new BizException("请选择预设牌组或自定义角色列表");
-        }
-
-        // 生成唯一房间码（带重试机制）
-        String roomCode = generateUniqueRoomCode();
-
-        // 创建对局记录
-        GaGameRecord record = new GaGameRecord();
-        record.setRoomCode(roomCode);
-        record.setDmUserId(dmUserId);
-        record.setMapId(dto.getMapId());
-        record.setRoleIds(JSON.toJSONString(roleIds)); // 持久化牌组
-        record.setStatus(GameStatus.PREPARING.getCode());
-        record.setCurrentRound(1);
-        record.setCurrentStage(GameStage.START.getCode());
-        gameRecordService.save(record);
-
-        log.info("DM创建房间: dmUserId={}, gameId={}, roomCode={}", dmUserId, record.getId(), roomCode);
-
-        return buildRoomVO(record, dmUserId, roleIds);
-    }
-
-    @Override
-    @Transactional
-    public RoomVO joinRoom(Long userId, JoinRoomDTO dto) {
-        // 根据房间码查找游戏
-        GaGameRecord record = gameRecordService.getOne(
-                new LambdaQueryWrapper<GaGameRecord>().eq(GaGameRecord::getRoomCode, dto.getRoomCode().toUpperCase()));
-
-        if (record == null) {
-            throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        // 检查游戏状态
-        if (!GameStatus.PREPARING.getCode().equals(record.getStatus())) {
-            throw new BizException(ResultCode.ROOM_PLAYING);
-        }
-
-        // 检查是否已在房间中
-        GaGamePlayer existPlayer = gamePlayerService.getByGameAndUser(record.getId(), userId);
-        if (existPlayer != null) {
-            throw new BizException(ResultCode.PLAYER_ALREADY_JOINED);
-        }
-
-        // 加入房间
-        GaGamePlayer player = new GaGamePlayer();
-        player.setGameId(record.getId());
-        player.setUserId(userId);
-        player.setSeatNo(gamePlayerService.getNextSeatNo(record.getId()));
-        player.setIsWinner(0);
-        gamePlayerService.save(player);
-
-        // 获取用户信息
-        SysUser user = userService.getById(userId);
-
-        log.info("玩家加入房间: userId={}, gameId={}", userId, record.getId());
-
-        // 发布玩家加入事件
-        eventPublisher.publishEvent(new com.eys.service.event.PlayerJoinedEvent(
-                this, record.getId(), userId,
-                user != null ? user.getNickname() : "",
-                user != null ? user.getAvatarUrl() : "",
-                player.getSeatNo()));
-
-        return getRoomInfo(record.getId(), userId);
-    }
-
-    @Override
-    @Transactional
-    public void leaveRoom(Long userId, Long gameId) {
-        GaGameRecord record = gameRecordService.getById(gameId);
-        if (record == null) {
-            throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        // 只能在准备阶段退出
-        if (!GameStatus.PREPARING.getCode().equals(record.getStatus())) {
-            throw new BizException("游戏已开始，无法退出");
-        }
-
-        GaGamePlayer player = gamePlayerService.getByGameAndUser(gameId, userId);
-        if (player != null) {
-            gamePlayerService.removeById(player.getId());
-            log.info("玩家退出房间: userId={}, gameId={}", userId, gameId);
-
-            // 发布玩家退出事件
-            eventPublisher.publishEvent(new com.eys.service.event.PlayerLeftEvent(
-                    this, gameId, userId));
-        }
-    }
-
-    @Override
-    public RoomVO getRoomInfo(Long gameId, Long userId) {
-        GaGameRecord record = gameRecordService.getById(gameId);
-        if (record == null) {
-            throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-        return buildRoomVO(record, userId, null);
-    }
-
-    @Override
-    public RoomVO getRoomByCode(String roomCode) {
-        GaGameRecord record = gameRecordService
-                .getOne(new LambdaQueryWrapper<GaGameRecord>().eq(GaGameRecord::getRoomCode, roomCode.toUpperCase()));
-        if (record == null) {
-            throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-        return buildRoomVO(record, null, null);
-    }
 
     // ==================== 游戏流程 ====================
 
@@ -337,21 +197,23 @@ public class GameServiceImpl implements GameService {
         }
 
         String oldStage = record.getCurrentStage();
-        String newStage;
+        GameStage oldStageEnum = GameStage.fromCode(oldStage);
+        GameStage newStageEnum;
         boolean shouldIncrementRound = false;
 
-        // 自动计算下一阶段
-        switch (oldStage) {
-            case "PREPARING" -> newStage = GameStage.START.getCode(); // 新增：PREPARING → START
-            case "START" -> newStage = GameStage.PRE_VOTE.getCode();
-            case "PRE_VOTE" -> newStage = GameStage.VOTE.getCode();
-            case "VOTE" -> newStage = GameStage.POST_VOTE.getCode();
-            case "POST_VOTE" -> {
-                newStage = GameStage.PRE_VOTE.getCode();
+        // 自动计算下一阶段（使用枚举比较，消除魔法字符串）
+        switch (oldStageEnum) {
+            case PREPARING -> newStageEnum = GameStage.START;
+            case START -> newStageEnum = GameStage.PRE_VOTE;
+            case PRE_VOTE -> newStageEnum = GameStage.VOTE;
+            case VOTE -> newStageEnum = GameStage.POST_VOTE;
+            case POST_VOTE -> {
+                newStageEnum = GameStage.PRE_VOTE;
                 shouldIncrementRound = true; // POST_VOTE → PRE_VOTE 时轮数+1
             }
             default -> throw new BizException(ResultCode.PARAM_ERROR, "当前阶段无法切换: " + oldStage);
         }
+        String newStage = newStageEnum.getCode();
 
         // 如果是进入下一轮（POST_VOTE → PRE_VOTE）
         if (shouldIncrementRound) {
@@ -551,11 +413,6 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        // 验证DM
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以录入技能");
-        }
-
         // 获取技能实例
         GaSkillInstance instance = skillInstanceService.getById(dto.getSkillInstanceId());
         if (instance == null) {
@@ -588,10 +445,10 @@ public class GameServiceImpl implements GameService {
 
     @Override
     public void dmRequestSkill(Long dmUserId, Long gameId, Long targetPlayerId, Long skillInstanceId) {
-        // 验证 DM 权限
+        // 验证房间存在
         GaGameRecord record = gameRecordService.getById(gameId);
-        if (record == null || !record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以请求玩家使用技能");
+        if (record == null) {
+            throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
         // 获取目标玩家信息
@@ -613,130 +470,6 @@ public class GameServiceImpl implements GameService {
                 dmUserId, gameId, targetPlayerId, skillInstanceId);
     }
 
-    // ==================== 投票 ====================
-
-    @Override
-    @Transactional
-    public void vote(Long userId, VoteDTO dto) {
-        GaGameRecord record = gameRecordService.getById(dto.getGameId());
-        if (record == null) {
-            throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        // 验证阶段
-        if (!GameStage.VOTE.getCode().equals(record.getCurrentStage())) {
-            throw new BizException(ResultCode.VOTE_NOT_ALLOWED);
-        }
-
-        GaGamePlayer player = gamePlayerService.getByGameAndUser(dto.getGameId(), userId);
-        if (player == null) {
-            throw new BizException(ResultCode.PLAYER_NOT_IN_GAME);
-        }
-
-        // 检查是否存活
-        GaPlayerStatus status = playerStatusService.getById(player.getId());
-        if (status == null || status.getIsAlive() != 1) {
-            throw new BizException(ResultCode.PLAYER_DEAD);
-        }
-
-        // 检查是否被禁言（状态效果）
-        if (playerStatusService.hasEffect(player.getId(), "禁言")) {
-            throw new BizException(ResultCode.FORBIDDEN, "你已被禁言，无法投票");
-        }
-
-        // 检查是否已投票
-        if (voteLogService.hasVoted(dto.getGameId(), record.getCurrentRound(), player.getId())) {
-            throw new BizException(ResultCode.VOTE_ALREADY_SUBMITTED);
-        }
-
-        // 记录投票
-        GaVoteLog voteLog = new GaVoteLog();
-        voteLog.setGameId(dto.getGameId());
-        voteLog.setRoundNo(record.getCurrentRound());
-        voteLog.setVoterId(player.getId());
-        voteLog.setTargetId(dto.getTargetPlayerId());
-        voteLog.setIsSkipped(0);
-        voteLogService.save(voteLog);
-
-        log.info("玩家投票: userId={}, gameId={}, targetId={}", userId, dto.getGameId(), dto.getTargetPlayerId());
-
-        // 统计投票进度，发布事件通知 DM
-        List<GaGamePlayer> allPlayers = gamePlayerService.listByGameId(dto.getGameId());
-        int totalVoters = (int) allPlayers.stream().filter(p -> {
-            GaPlayerStatus s = playerStatusService.getById(p.getId());
-            return s != null && s.getIsAlive() == 1;
-        }).count();
-        int votedCount = (int) voteLogService.listByGameAndRound(dto.getGameId(), record.getCurrentRound()).size();
-
-        eventPublisher.publishEvent(new com.eys.service.event.VoteSubmittedEvent(
-                this, dto.getGameId(), record.getDmUserId(), votedCount, totalVoters));
-    }
-
-    @Override
-    public VoteResultVO getVoteResult(Long gameId, Integer roundNo) {
-        GaGameRecord record = gameRecordService.getById(gameId);
-        if (record == null) {
-            throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        // 如果未指定轮次，使用当前轮次
-        int targetRound = roundNo != null ? roundNo : record.getCurrentRound();
-
-        // 获取存活玩家列表（应投票人数）
-        List<GaGamePlayer> allPlayers = gamePlayerService.listByGameId(gameId);
-        List<GaGamePlayer> aliveVoters = allPlayers.stream().filter(p -> {
-            GaPlayerStatus status = playerStatusService.getById(p.getId());
-            return status != null && status.getIsAlive() == 1;
-        }).toList();
-
-        // 获取本轮投票记录
-        List<GaVoteLog> votes = voteLogService.listByGameAndRound(gameId, targetRound);
-
-        // 统计弃票数（targetId=0 或 NULL 且 isSkipped=0）
-        int abstainCount = (int) votes.stream()
-                .filter(v -> (v.getTargetId() == null || v.getTargetId() == 0) && v.getIsSkipped() != 1).count();
-
-        // 统计跳过数（isSkipped=1）
-        int skippedCount = (int) votes.stream().filter(v -> v.getIsSkipped() == 1).count();
-
-        // 统计得票（排除弃票和跳过）
-        Map<Long, Long> voteCountMap = votes.stream()
-                .filter(v -> v.getTargetId() != null && v.getTargetId() != 0 && v.getIsSkipped() != 1)
-                .collect(Collectors.groupingBy(GaVoteLog::getTargetId, Collectors.counting()));
-
-        // 构建得票统计列表
-        List<VoteResultVO.VoteCountItem> voteCounts = voteCountMap.entrySet().stream().map(entry -> {
-            Long targetId = entry.getKey();
-            GaGamePlayer targetPlayer = gamePlayerService.getById(targetId);
-            SysUser user = targetPlayer != null ? userService.getById(targetPlayer.getUserId()) : null;
-            return VoteResultVO.VoteCountItem.builder().targetPlayerId(targetId)
-                    .targetNickname(user != null ? user.getNickname() : "")
-                    .seatNo(targetPlayer != null ? targetPlayer.getSeatNo() : 0).count(entry.getValue().intValue())
-                    .build();
-        }).sorted((a, b) -> b.getCount() - a.getCount()) // 按得票数降序
-                .collect(Collectors.toList());
-
-        // 判定最高票
-        Long topVotedPlayerId = null;
-        int topVoteCount = 0;
-        boolean isTie = false;
-
-        if (!voteCounts.isEmpty()) {
-            topVoteCount = voteCounts.get(0).getCount();
-            topVotedPlayerId = voteCounts.get(0).getTargetPlayerId();
-
-            // 检查是否有平票
-            final int finalTopVoteCount = topVoteCount;
-            long tieCount = voteCounts.stream().filter(item -> item.getCount() == finalTopVoteCount).count();
-            isTie = tieCount > 1;
-        }
-
-        return VoteResultVO.builder().gameId(gameId).roundNo(targetRound).votedCount(votes.size())
-                .totalVoters(aliveVoters.size()).completed(votes.size() >= aliveVoters.size()).voteCounts(voteCounts)
-                .topVotedPlayerId(topVotedPlayerId).topVoteCount(topVoteCount).isTie(isTie).abstainCount(abstainCount)
-                .skippedCount(skippedCount).build();
-    }
-
     // ==================== DM 操作 ====================
 
     @Override
@@ -745,10 +478,6 @@ public class GameServiceImpl implements GameService {
         GaGameRecord record = gameRecordService.getById(gameId);
         if (record == null) {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以判定死亡");
         }
 
         GaPlayerStatus status = playerStatusService.getById(targetPlayerId);
@@ -791,10 +520,6 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以复活玩家");
-        }
-
         GaPlayerStatus status = playerStatusService.getById(targetPlayerId);
         if (status == null) {
             throw new BizException(ResultCode.PLAYER_NOT_IN_GAME);
@@ -835,10 +560,6 @@ public class GameServiceImpl implements GameService {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
         }
 
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以移除标签");
-        }
-
         // 移除状态效果
         playerStatusService.removeEffect(targetPlayerId, tagName);
 
@@ -864,10 +585,6 @@ public class GameServiceImpl implements GameService {
         GaGameRecord record = gameRecordService.getById(gameId);
         if (record == null) {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有DM可以代替玩家释放技能");
         }
 
         // 获取技能实例
@@ -907,77 +624,6 @@ public class GameServiceImpl implements GameService {
         log.info("DM代替玩家释放技能: gameId={}, actorPlayerId={}, skillId={}", gameId, actorPlayerId, skill.getId());
     }
 
-    // ==================== 私有方法 ====================
-
-    /**
-     * 生成房间码
-     */
-    private String generateRoomCode() {
-        return RandomUtil.randomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 6);
-    }
-
-    /**
-     * 生成唯一房间码（带重试和冲突检查）
-     */
-    private String generateUniqueRoomCode() {
-        int maxRetries = 10;
-        for (int i = 0; i < maxRetries; i++) {
-            String roomCode = generateRoomCode();
-            // 检查是否已存在
-            long count = gameRecordService.count(
-                    new LambdaQueryWrapper<GaGameRecord>()
-                            .eq(GaGameRecord::getRoomCode, roomCode));
-            if (count == 0) {
-                return roomCode;
-            }
-            log.warn("房间码冲突，重试: roomCode={}, attempt={}/{}", roomCode, i + 1, maxRetries);
-        }
-        throw new BizException("生成房间码失败，请稍后重试");
-    }
-
-    /**
-     * 构建房间VO
-     */
-    private RoomVO buildRoomVO(GaGameRecord record, Long viewerUserId, List<Long> roleIds) {
-        SysUser dm = userService.getById(record.getDmUserId());
-        CfgMap map = mapService.getById(record.getMapId());
-
-        List<GaGamePlayer> players = gamePlayerService.listByGameId(record.getId());
-        boolean isDm = viewerUserId != null && viewerUserId.equals(record.getDmUserId());
-        boolean isFinished = GameStatus.FINISHED.getCode().equals(record.getStatus());
-
-        // 根据查看者权限决定返回 PlayerSafeVO 还是 PlayerFullVO
-        List<? extends PlayerSafeVO> playerVOs = players.stream().map(p -> {
-            SysUser user = userService.getById(p.getUserId());
-            GaPlayerStatus status = playerStatusService.getById(p.getId());
-            boolean isAlive = status == null || status.getIsAlive() == 1;
-
-            // DM 或游戏结束时返回完整信息
-            if (isDm || isFinished) {
-                CfgRole role = p.getCurrRoleId() != null ? roleService.getById(p.getCurrRoleId()) : null;
-                CfgRole initRole = p.getInitRoleId() != null ? roleService.getById(p.getInitRoleId()) : null;
-                return PlayerFullVO.builder().gamePlayerId(p.getId()).userId(p.getUserId())
-                        .nickname(user != null ? user.getNickname() : "")
-                        .avatarUrl(user != null ? user.getAvatarUrl() : "").seatNo(p.getSeatNo()).alive(isAlive)
-                        .roleId(role != null ? role.getId() : null).roleName(role != null ? role.getName() : null)
-                        .campType(role != null ? role.getCampType() : null)
-                        .initRoleId(initRole != null ? initRole.getId() : null)
-                        .initRoleName(initRole != null ? initRole.getName() : null).build();
-            }
-
-            // 普通玩家只能看到脱敏信息
-            return PlayerSafeVO.builder().gamePlayerId(p.getId()).userId(p.getUserId())
-                    .nickname(user != null ? user.getNickname() : "").avatarUrl(user != null ? user.getAvatarUrl() : "")
-                    .seatNo(p.getSeatNo()).alive(isAlive).build();
-        }).toList();
-
-        return RoomVO.builder().gameId(record.getId()).roomCode(record.getRoomCode()).dmUserId(record.getDmUserId())
-                .dmNickname(dm != null ? dm.getNickname() : "").mapId(record.getMapId())
-                .mapName(map != null ? map.getName() : "").status(record.getStatus())
-                .currentRound(record.getCurrentRound()).currentStage(record.getCurrentStage()).players(playerVOs)
-                .roleIds(roleIds).build();
-    }
-
     /**
      * 判断技能是否可以在当前阶段使用
      * 
@@ -994,11 +640,6 @@ public class GameServiceImpl implements GameService {
         GaGameRecord record = gameRecordService.getById(gameId);
         if (record == null) {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        // 验证 DM 权限
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以查看全局视角");
         }
 
         List<GaGamePlayer> players = gamePlayerService.listByGameId(gameId);
@@ -1043,11 +684,6 @@ public class GameServiceImpl implements GameService {
         GaGameRecord record = gameRecordService.getById(gameId);
         if (record == null) {
             throw new BizException(ResultCode.ROOM_NOT_FOUND);
-        }
-
-        // 验证 DM 权限
-        if (!record.getDmUserId().equals(dmUserId)) {
-            throw new BizException(ResultCode.FORBIDDEN, "只有 DM 可以查看动作日志");
         }
 
         if (roundNo != null) {

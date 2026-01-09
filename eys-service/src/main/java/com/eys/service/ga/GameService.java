@@ -2,61 +2,16 @@ package com.eys.service.ga;
 
 import com.eys.model.dto.game.*;
 import com.eys.model.vo.game.PlayerGameVO;
-import com.eys.model.vo.game.RoomVO;
-import com.eys.model.vo.game.VoteResultVO;
 
 /**
  * 游戏核心 Service 接口
- * 处理房间管理、游戏流程、技能释放、投票等核心逻辑
+ * 处理游戏流程、技能释放、DM 操作等核心逻辑
+ * 
+ * 注：房间管理由 RoomService 处理，投票由 VoteService 处理
  *
  * @author EYS
  */
 public interface GameService {
-
-    // ==================== 房间管理 ====================
-
-    /**
-     * DM创建房间
-     *
-     * @param dmUserId DM用户ID
-     * @param dto      创建房间请求
-     * @return 房间信息
-     */
-    RoomVO createRoom(Long dmUserId, CreateRoomDTO dto);
-
-    /**
-     * 玩家加入房间
-     *
-     * @param userId 用户ID
-     * @param dto    加入房间请求
-     * @return 房间信息
-     */
-    RoomVO joinRoom(Long userId, JoinRoomDTO dto);
-
-    /**
-     * 玩家退出房间
-     *
-     * @param userId 用户ID
-     * @param gameId 游戏ID
-     */
-    void leaveRoom(Long userId, Long gameId);
-
-    /**
-     * 获取房间信息
-     *
-     * @param gameId 游戏ID
-     * @param userId 请求用户ID（用于判断是否为DM）
-     * @return 房间信息
-     */
-    RoomVO getRoomInfo(Long gameId, Long userId);
-
-    /**
-     * 根据房间码获取房间信息
-     *
-     * @param roomCode 房间码
-     * @return 房间信息
-     */
-    RoomVO getRoomByCode(String roomCode);
 
     // ==================== 游戏流程 ====================
 
@@ -120,25 +75,6 @@ public interface GameService {
      * @param skillInstanceId 技能实例ID
      */
     void dmRequestSkill(Long dmUserId, Long gameId, Long targetPlayerId, Long skillInstanceId);
-
-    // ==================== 投票 ====================
-
-    /**
-     * 玩家投票
-     *
-     * @param userId 用户ID
-     * @param dto    投票请求
-     */
-    void vote(Long userId, VoteDTO dto);
-
-    /**
-     * 获取投票结果统计
-     *
-     * @param gameId  游戏ID
-     * @param roundNo 轮次（可选，为 null 时取当前轮次）
-     * @return 投票结果
-     */
-    VoteResultVO getVoteResult(Long gameId, Integer roundNo);
 
     // ==================== DM 操作 ====================
 

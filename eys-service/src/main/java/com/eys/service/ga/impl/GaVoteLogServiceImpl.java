@@ -32,4 +32,11 @@ public class GaVoteLogServiceImpl extends ServiceImpl<GaVoteLogMapper, GaVoteLog
                 .eq(GaVoteLog::getRoundNo, roundNo)
                 .eq(GaVoteLog::getVoterId, voterId)) > 0;
     }
+
+    @Override
+    public int countByGameAndRound(Long gameId, Integer roundNo) {
+        return (int) count(new LambdaQueryWrapper<GaVoteLog>()
+                .eq(GaVoteLog::getGameId, gameId)
+                .eq(GaVoteLog::getRoundNo, roundNo));
+    }
 }

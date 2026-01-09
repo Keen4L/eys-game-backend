@@ -5,7 +5,7 @@ import com.eys.common.result.R;
 import com.eys.model.dto.game.CreateRoomDTO;
 import com.eys.model.dto.game.JoinRoomDTO;
 import com.eys.model.vo.game.RoomVO;
-import com.eys.service.ga.GameService;
+import com.eys.service.ga.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class RoomController {
 
-    private final GameService gameService;
+    private final RoomService roomService;
 
     /**
      * DM创建房间
@@ -33,7 +33,7 @@ public class RoomController {
     @PostMapping("/create")
     public R<RoomVO> create(@Valid @RequestBody CreateRoomDTO dto) {
         Long userId = StpUtil.getLoginIdAsLong();
-        RoomVO room = gameService.createRoom(userId, dto);
+        RoomVO room = roomService.createRoom(userId, dto);
         return R.ok(room);
     }
 
@@ -44,7 +44,7 @@ public class RoomController {
     @PostMapping("/join")
     public R<RoomVO> join(@Valid @RequestBody JoinRoomDTO dto) {
         Long userId = StpUtil.getLoginIdAsLong();
-        RoomVO room = gameService.joinRoom(userId, dto);
+        RoomVO room = roomService.joinRoom(userId, dto);
         return R.ok(room);
     }
 
@@ -55,7 +55,7 @@ public class RoomController {
     @PostMapping("/{gameId}/leave")
     public R<Void> leave(@Parameter(description = "游戏ID") @PathVariable Long gameId) {
         Long userId = StpUtil.getLoginIdAsLong();
-        gameService.leaveRoom(userId, gameId);
+        roomService.leaveRoom(userId, gameId);
         return R.ok();
     }
 
@@ -66,7 +66,7 @@ public class RoomController {
     @GetMapping("/{gameId}")
     public R<RoomVO> info(@Parameter(description = "游戏ID") @PathVariable Long gameId) {
         Long userId = StpUtil.getLoginIdAsLong();
-        RoomVO room = gameService.getRoomInfo(gameId, userId);
+        RoomVO room = roomService.getRoomInfo(gameId, userId);
         return R.ok(room);
     }
 
@@ -76,7 +76,7 @@ public class RoomController {
     @Operation(summary = "根据房间码查询房间信息")
     @GetMapping("/code/{roomCode}")
     public R<RoomVO> getByCode(@Parameter(description = "房间码") @PathVariable String roomCode) {
-        RoomVO room = gameService.getRoomByCode(roomCode);
+        RoomVO room = roomService.getRoomByCode(roomCode);
         return R.ok(room);
     }
 }

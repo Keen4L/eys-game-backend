@@ -3,6 +3,7 @@ package com.eys.service.ga.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.eys.mapper.ga.GaPlayerStatusMapper;
 import com.eys.model.entity.ga.GaPlayerStatus;
@@ -149,5 +150,14 @@ public class GaPlayerStatusServiceImpl extends ServiceImpl<GaPlayerStatusMapper,
                                 log.warn("清理过期效果失败: playerId={}, error={}", status.getGamePlayerId(), e.getMessage());
                         }
                 }
+        }
+
+        @Override
+        public int countAliveByGameId(Long gameId) {
+                // 使用数据库 COUNT 查询，避免全量加载
+                return (int) count(new LambdaQueryWrapper<GaPlayerStatus>()
+                                .eq(GaPlayerStatus::getIsAlive, 1)
+                                .inSql(GaPlayerStatus::getGamePlayerId,
+                                                "SELECT id FROM ga_game_player WHERE game_id = " + gameId));
         }
 }

@@ -53,8 +53,9 @@ sa-token:
 # 微信小程序配置
 wechat:
   miniapp:
-    appid: your-appid
-    secret: your-secret
+    app-id: ${WECHAT_APP_ID:}          # 小程序 AppID（环境变量优先）
+    app-secret: ${WECHAT_APP_SECRET:}  # 小程序 AppSecret（环境变量优先）
+    login-url: https://api.weixin.qq.com/sns/jscode2session
 
 # Knife4j 配置
 springdoc:

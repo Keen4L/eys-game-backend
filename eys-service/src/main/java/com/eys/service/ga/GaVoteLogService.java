@@ -21,4 +21,13 @@ public interface GaVoteLogService extends IService<GaVoteLog> {
      * 检查玩家是否已投票
      */
     boolean hasVoted(Long gameId, Integer roundNo, Long voterId);
+
+    /**
+     * 统计某轮次的投票数量（优化：使用 COUNT 替代 list.size()）
+     *
+     * @param gameId  游戏ID
+     * @param roundNo 轮次
+     * @return 投票数量
+     */
+    int countByGameAndRound(Long gameId, Integer roundNo);
 }

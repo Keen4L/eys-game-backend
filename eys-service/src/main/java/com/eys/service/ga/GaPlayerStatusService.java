@@ -42,4 +42,12 @@ public interface GaPlayerStatusService extends IService<GaPlayerStatus> {
      * @param gameId 对局ID
      */
     void tickDownAndClearExpiredEffects(Long gameId);
+
+    /**
+     * 统计存活玩家数量（优化：使用 COUNT 替代 list + filter）
+     *
+     * @param gameId 游戏ID
+     * @return 存活玩家数量
+     */
+    int countAliveByGameId(Long gameId);
 }
