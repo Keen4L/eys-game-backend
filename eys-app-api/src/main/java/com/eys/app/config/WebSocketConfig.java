@@ -1,6 +1,7 @@
 package com.eys.app.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
@@ -22,7 +23,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private GameHandshakeInterceptor gameHandshakeInterceptor;
 
     @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+    @SuppressWarnings("null") // gameWebSocketHandler 由 Spring 注入，不会为 null
+    public void registerWebSocketHandlers(@NonNull WebSocketHandlerRegistry registry) {
         // 注册 WebSocket 处理器
         // 路径: /ws/game?token=xxx&gameId=xxx
         registry.addHandler(gameWebSocketHandler, "/ws/game")

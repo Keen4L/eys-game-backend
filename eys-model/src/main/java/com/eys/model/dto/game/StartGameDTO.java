@@ -19,7 +19,7 @@ public class StartGameDTO {
      * 游戏ID
      */
     @NotNull(message = "游戏ID不能为空")
-    @Schema(description = "游戏ID", required = true)
+    @Schema(description = "游戏ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long gameId;
 
     /**

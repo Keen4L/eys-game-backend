@@ -17,6 +17,6 @@ public class JoinRoomDTO {
      * 房间邀请码
      */
     @NotBlank(message = "房间码不能为空")
-    @Schema(description = "房间邀请码", required = true)
+    @Schema(description = "房间邀请码", requiredMode = Schema.RequiredMode.REQUIRED)
     private String roomCode;
 }

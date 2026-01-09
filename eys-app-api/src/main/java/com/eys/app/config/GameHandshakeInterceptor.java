@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
@@ -26,8 +28,8 @@ public class GameHandshakeInterceptor implements HandshakeInterceptor {
      * 验证 Token 有效性，提取 gameId 和 userId
      */
     @Override
-    public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-            WebSocketHandler wsHandler, Map<String, Object> attributes) {
+    public boolean beforeHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response,
+            @NonNull WebSocketHandler wsHandler, @NonNull Map<String, Object> attributes) {
         if (request instanceof ServletServerHttpRequest servletRequest) {
             // 获取请求参数
             String token = servletRequest.getServletRequest().getParameter("token");
@@ -69,8 +71,8 @@ public class GameHandshakeInterceptor implements HandshakeInterceptor {
     }
 
     @Override
-    public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
-            WebSocketHandler wsHandler, Exception exception) {
+    public void afterHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response,
+            @NonNull WebSocketHandler wsHandler, @Nullable Exception exception) {
         // 握手后处理（可选）
     }
 }

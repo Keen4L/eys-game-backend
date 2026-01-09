@@ -19,14 +19,14 @@ public class SkillUseDTO {
      * 游戏ID
      */
     @NotNull(message = "游戏ID不能为空")
-    @Schema(description = "游戏ID", required = true)
+    @Schema(description = "游戏ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long gameId;
 
     /**
      * 技能实例ID
      */
     @NotNull(message = "技能实例ID不能为空")
-    @Schema(description = "技能实例ID", required = true)
+    @Schema(description = "技能实例ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long skillInstanceId;
 
     /**

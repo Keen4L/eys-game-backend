@@ -19,7 +19,7 @@ public class CreateRoomDTO {
      * 地图ID
      */
     @NotNull(message = "地图不能为空")
-    @Schema(description = "地图ID", required = true)
+    @Schema(description = "地图ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long mapId;
 
     /**

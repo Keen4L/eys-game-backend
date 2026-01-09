@@ -17,7 +17,7 @@ public class WxLoginDTO {
      * 微信登录凭证 code
      */
     @NotBlank(message = "登录凭证不能为空")
-    @Schema(description = "微信登录凭证code", required = true)
+    @Schema(description = "微信登录凭证code", requiredMode = Schema.RequiredMode.REQUIRED)
     private String code;
 
     /**

@@ -17,14 +17,14 @@ public class GameEndDTO {
      * 游戏ID
      */
     @NotNull(message = "游戏ID不能为空")
-    @Schema(description = "游戏ID", required = true)
+    @Schema(description = "游戏ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long gameId;
 
     /**
      * 胜利类型: 1-鹅胜, 2-鸭胜, 3-中立个人胜
      */
     @NotNull(message = "胜利类型不能为空")
-    @Schema(description = "胜利类型: 1-鹅胜, 2-鸭胜, 3-中立个人胜", required = true)
+    @Schema(description = "胜利类型: 1-鹅胜, 2-鸭胜, 3-中立个人胜", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer victoryType;
 
     /**

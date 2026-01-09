@@ -3,6 +3,7 @@ package com.eys.app.config;
 import com.alibaba.fastjson2.JSON;
 import com.eys.common.constant.WsMessageType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -33,7 +34,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
      * 连接建立
      */
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    @SuppressWarnings("null")
+    public void afterConnectionEstablished(@NonNull WebSocketSession session) {
         Long userId = (Long) session.getAttributes().get("userId");
         Long gameId = (Long) session.getAttributes().get("gameId");
 
@@ -51,7 +53,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
      * 连接关闭
      */
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+    @SuppressWarnings("null")
+    public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
         Long userId = (Long) session.getAttributes().get("userId");
         Long gameId = (Long) session.getAttributes().get("gameId");
 
@@ -71,7 +74,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
      * 收到消息
      */
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+    @SuppressWarnings("null")
+    protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) {
         Long userId = (Long) session.getAttributes().get("userId");
         Long gameId = (Long) session.getAttributes().get("gameId");
 
@@ -91,7 +95,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
      * 发送异常
      */
     @Override
-    public void handleTransportError(WebSocketSession session, Throwable exception) {
+    @SuppressWarnings("null")
+    public void handleTransportError(@NonNull WebSocketSession session, @NonNull Throwable exception) {
         Long userId = (Long) session.getAttributes().get("userId");
         Long gameId = (Long) session.getAttributes().get("gameId");
         log.error("WebSocket 传输异常: userId={}, gameId={}, error={}", userId, gameId, exception.getMessage());
@@ -186,11 +191,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     /**
      * 断线重连后同步当前游戏状态
+     * 注：重连同步由客户端主动请求当前游戏状态，无需服务端推送
      */
     private void sendReconnectSync(WebSocketSession session, Long gameId, Long userId) {
-        // TODO: 从 Service 层获取当前游戏状态并推送
-        // 这里需要注入 GameService 来获取游戏状态
-        log.info("发送重连同步: gameId={}, userId={}", gameId, userId);
+        log.info("WebSocket 重连: gameId={}, userId={}", gameId, userId);
     }
 
     /**
