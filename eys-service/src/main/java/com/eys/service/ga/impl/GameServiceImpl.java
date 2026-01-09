@@ -266,6 +266,43 @@ public class GameServiceImpl implements GameService {
         gameRecordService.updateById(record);
 
         log.info("游戏开始: gameId={}, playerCount={}", dto.getGameId(), players.size());
+
+        // 【关键】推送 START 阶段的技能给对应玩家
+        pushSkillsForStage(dto.getGameId(), players, "START");
+    }
+
+    /**
+     * 推送指定阶段的技能给玩家
+     * 根据技能的 triggerPhases 字段判断是否自动推送
+     */
+    private void pushSkillsForStage(Long gameId, List<GaGamePlayer> players, String stage) {
+        for (GaGamePlayer player : players) {
+            List<GaSkillInstance> instances = skillInstanceService.listByGamePlayerId(player.getId());
+            for (GaSkillInstance instance : instances) {
+                CfgSkill skill = skillService.getById(instance.getSkillId());
+                if (skill == null || instance.getRemainCount() <= 0) {
+                    continue;
+                }
+
+                // 检查技能的 triggerPhases 是否包含当前阶段
+                String triggerPhases = skill.getTriggerPhases();
+                if (triggerPhases != null && !triggerPhases.isEmpty()) {
+                    boolean shouldTrigger = java.util.Arrays.stream(triggerPhases.split(","))
+                            .map(String::trim)
+                            .anyMatch(phase -> phase.equalsIgnoreCase(stage));
+
+                    if (shouldTrigger) {
+                        // 发布事件，推送技能使用请求给玩家
+                        eventPublisher.publishEvent(new com.eys.service.event.DmRequestSkillEvent(
+                                this, gameId, null, player.getId(), player.getUserId(),
+                                instance.getId(), skill.getName()));
+
+                        log.info("自动推送技能: gameId={}, playerId={}, skillName={}, stage={}",
+                                gameId, player.getId(), skill.getName(), stage);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -315,6 +352,10 @@ public class GameServiceImpl implements GameService {
         // 发布阶段变更事件，触发 WebSocket 广播
         eventPublisher.publishEvent(new GameStageChangeEvent(this, dto.getGameId(), oldStage, newStage,
                 record.getCurrentRound()));
+
+        // 【关键】推送新阶段的技能给对应玩家
+        List<GaGamePlayer> players = gamePlayerService.listByGameId(dto.getGameId());
+        pushSkillsForStage(dto.getGameId(), players, newStage);
     }
 
     @Override
