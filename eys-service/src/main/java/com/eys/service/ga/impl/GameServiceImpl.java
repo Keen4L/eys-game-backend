@@ -291,6 +291,10 @@ public class GameServiceImpl implements GameService {
         // 如果是进入下一轮
         if (Boolean.TRUE.equals(dto.getNextRound())) {
             record.setCurrentRound(record.getCurrentRound() + 1);
+
+            // 【关键】进入下一轮时，清理所有 NEXT_ROUND 类型的 Tag
+            playerStatusService.tickDownAndClearExpiredEffects(dto.getGameId());
+            log.info("已清理过期Tag: gameId={}", dto.getGameId());
         }
 
         record.setCurrentStage(dto.getTargetStage());

@@ -35,4 +35,11 @@ public interface GaPlayerStatusService extends IService<GaPlayerStatus> {
      * @param effectType   效果类型
      */
     void removeEffect(Long gamePlayerId, String effectType);
+
+    /**
+     * 清理指定对局中所有过期的 Tag (duration=1 的自动扣减，=0 的移除)
+     *
+     * @param gameId 对局ID
+     */
+    void tickDownAndClearExpiredEffects(Long gameId);
 }

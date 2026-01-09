@@ -137,8 +137,8 @@ public class GeneralSkillHandler implements SkillHandler {
 
         dmNoteBuilder.append(String.format(" -> 玩家%d 被施加 [%s] 状态", target.getSeatNo(), tagName));
 
-        log.info("GeneralHandler.TAG: actor={}, target={}, tag={}, expiry={}",
-                context.getActor().getId(), targetId, tagName, expiryRule);
+        log.info("GeneralHandler.TAG: actor={}, target={}, tag={}, expiry={}, restriction={}",
+                context.getActor().getId(), targetId, tagName, expiryRule, restriction);
 
         return SkillResult.status(targetId, tagName, dmNoteBuilder.toString(), publicNoteBuilder.toString());
     }
